@@ -194,6 +194,7 @@ const configuration: webpack.Configuration = {
     port,
     compress: true,
     hot: true,
+    allowedHosts: 'all',  // 允许所有主机访问
     headers: { 'Access-Control-Allow-Origin': '*' },
     static: {
       publicPath: '/',

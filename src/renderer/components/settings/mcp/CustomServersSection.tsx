@@ -5,6 +5,7 @@ import { type FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { v4 as uuid } from 'uuid'
+import platform from '@/platform'
 import { ScalableIcon } from '@/components/ScalableIcon'
 import { useToggleMCPServer } from '@/hooks/mcp'
 import { mcpController } from '@/packages/mcp/controller'
@@ -150,7 +151,7 @@ const CustomServersSection: FC<Props> = (props) => {
           bd="1px dashed var(--chatbox-border-primary)"
           p="sm"
           className="cursor-pointer"
-          onClick={spotlight.open}
+          onClick={platform.type === 'desktop' ? spotlight.open : () => triggerAddServer()}
         >
           <Flex direction="column" justify="center" align="center" h="100%" gap={4}>
             <ActionIcon variant="filled" size="sm">
@@ -172,7 +173,9 @@ const CustomServersSection: FC<Props> = (props) => {
           )
         })}
       </SimpleGrid>
-      <ServerRegistrySpotlight triggerAddServer={triggerAddServer} triggerImportJson={triggerImportJson} />
+      {platform.type === 'desktop' && (
+        <ServerRegistrySpotlight triggerAddServer={triggerAddServer} triggerImportJson={triggerImportJson} />
+      )}
       <ConfigModal
         mode={modal?.mode}
         config={modal ? modal.config : null}

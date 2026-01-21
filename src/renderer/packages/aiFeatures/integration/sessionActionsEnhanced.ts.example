@@ -1,0 +1,198 @@
+/**
+ * sessionActions AI功能增强
+ * 在现有的sessionActions基础上集成三大AI功能
+ */
+
+import { AIFeaturesCoordinator } from '@/packages/aiFeatures';
+import { useAIFeaturesStore } from '@/stores/aiFeaturesStore';
+import type { Message } from 'src/shared/types';
+
+/**
+ * 扩展的submitNewUserMessage - 支持Think模式
+ */
+export async function submitNewUserMessageWithAI(
+  sessionId: string,
+  params: { newUserMsg: Message; needGenerating: boolean }
+) {
+  const { thinkModeEnabled, followUpEnabled, recommendationEnabled } = useAIFeaturesStore.getState();
+
+  // 如果开启Think模式
+  if (thinkModeEnabled && params.needGenerating) {
+    // 获取会话设置
+    const sessionSettings = await getSessionSettings(sessionId);
+
+    // 执行Think模式
+    const thinkResult = await executeThinkMode(
+      sessionId,
+      params.newUserMsg,
+      sessionSettings
+    );
+
+    // 如果Think模式成功，使用其生成的答案
+    if (thinkResult) {
+      return;
+    }
+  }
+
+  // 否则使用原始的submitNewUserMessage
+  // 注意：这里需要导入原始的submitNewUserMessage
+  // return submitNewUserMessage(sessionId, params);
+}
+
+/**
+ * 执行Think模式
+ */
+async function executeThinkMode(
+  sessionId: string,
+  userMessage: Message,
+  sessionSettings: any
+) {
+  try {
+    // 显示思考过程
+    const { ThinkModeEngine } = await import('@/packages/aiFeatures/thinkMode');
+    const { thinkModeConfig } = useAIFeaturesStore.getState();
+
+    const thinkEngine = new ThinkModeEngine(thinkModeConfig);
+
+    // 执行思考
+    const thinkResponse = await thinkEngine.think(
+      {
+        prompt: getMessageText(userMessage),
+        context: [], // 可以从session获取历史消息
+        config: thinkModeConfig,
+      },
+      sessionSettings
+    );
+
+    // 创建包含思考过程的AI消息
+    const thinkProcessMessage = createMessage('assistant', '');
+    thinkProcessMessage.metadata = {
+      thinkProcess: thinkResponse.thoughtProcess,
+      isThinkProcess: true,
+    };
+
+    await insertMessage(sessionId, thinkProcessMessage);
+
+    // 延迟后显示答案
+    setTimeout(async () => {
+      const answerMessage = createMessage('assistant', thinkResponse.finalAnswer);
+      answerMessage.metadata = {
+        thinkProcess: thinkResponse.thoughtProcess,
+        generatedFromThink: true,
+      };
+      await insertMessage(sessionId, answerMessage);
+
+      // 生成追问和推荐
+      await handleAfterResponse(sessionId, answerMessage);
+    }, 500);
+
+    return true;
+  } catch (error) {
+    console.error('Think mode failed, falling back to normal mode:', error);
+    return false;
+  }
+}
+
+/**
+ * AI回复后处理 - 生成追问和推荐
+ */
+async function handleAfterResponse(sessionId: string, aiMessage: Message) {
+  const { followUpEnabled, recommendationEnabled } = useAIFeaturesStore.getState();
+
+  if (!followUpEnabled && !recommendationEnabled) {
+    return;
+  }
+
+  try {
+    // 获取会话
+    const session = await getSession(sessionId);
+    if (!session) return;
+
+    // 初始化协调器
+    const coordinator = new AIFeaturesCoordinator({
+      followUp: {
+        maxSuggestions: 4,
+        minConfidence: 0.6,
+        enableLLM: false,
+      },
+      recommendation: {
+        maxPerType: 3,
+        minRelevanceScore: 0.5,
+        refreshInterval: 3,
+        enableCollaborativeFiltering: false,
+      },
+      thinkMode: useAIFeaturesStore.getState().thinkModeConfig,
+    });
+
+    // 执行AI功能
+    const results = await coordinator.handleAfterResponse(
+      aiMessage,
+      session.messages,
+      {
+        followUpEnabled,
+        recommendationEnabled,
+      }
+    );
+
+    // 存储结果到session
+    if (results.followUpSuggestions.length > 0) {
+      await updateSession(sessionId, {
+        metadata: {
+          ...session.metadata,
+          followUpSuggestions: results.followUpSuggestions,
+        },
+      } as any);
+    }
+
+    if (results.recommendations.length > 0) {
+      await updateSession(sessionId, {
+        metadata: {
+          ...session.metadata,
+          recommendations: results.recommendations,
+        },
+      } as any);
+    }
+  } catch (error) {
+    console.error('AI features after response failed:', error);
+  }
+}
+
+/**
+ * 辅助函数 - 获取消息文本
+ */
+function getMessageText(message: Message): string {
+  if (typeof message.content === 'string') {
+    return message.content;
+  }
+  if (message.contentParts) {
+    return message.contentParts
+      .filter(p => p.type === 'text')
+      .map(p => (p as any).text || '')
+      .join('');
+  }
+  return '';
+}
+
+// 导入需要的函数 - 实际使用时需要从正确的位置导入
+async function getSessionSettings(sessionId: string) {
+  // TODO: 从sessionActions导入
+  return {};
+}
+
+async function getSession(sessionId: string) {
+  // TODO: 从chatStore导入
+  return null;
+}
+
+async function insertMessage(sessionId: string, message: Message) {
+  // TODO: 从sessionActions导入
+}
+
+async function updateSession(sessionId: string, updates: any) {
+  // TODO: 从chatStore导入
+}
+
+function createMessage(role: string, content: string): Message {
+  // TODO: 从shared/utils/message导入
+  return {} as Message;
+}

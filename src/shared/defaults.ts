@@ -75,6 +75,19 @@ export function settings(): Settings {
 
     // customProviders: [],
 
+    // 模型个性化配置
+    modelPersonalizations: {},
+
+    // 记忆系统设置
+    memoryEnabled: true,
+    memorySettings: {
+      storageLocation: 'local',
+      retentionDays: 0,
+      autoExtract: true,
+      extractOnMessageCount: 10,
+      privacyMode: false,
+    },
+
     showWordCount: false,
     showTokenCount: false,
     showTokenUsed: true,

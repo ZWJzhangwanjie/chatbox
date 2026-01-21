@@ -234,6 +234,67 @@ export default class DesktopPlatform implements Platform {
     return this._kbController
   }
 
+  // Memory operations
+  public async getAllMemories(userId = 'default') {
+    return await this.ipc.invoke('memory:getAll', userId)
+  }
+
+  public async getMemoryById(id: string) {
+    return await this.ipc.invoke('memory:getById', id)
+  }
+
+  public async addMemory(memory: any) {
+    return await this.ipc.invoke('memory:add', memory)
+  }
+
+  public async updateMemory(id: string, updates: any) {
+    return await this.ipc.invoke('memory:update', id, updates)
+  }
+
+  public async deleteMemory(id: string) {
+    return await this.ipc.invoke('memory:delete', id)
+  }
+
+  public async deleteMemoriesBatch(ids: string[]) {
+    return await this.ipc.invoke('memory:deleteBatch', ids)
+  }
+
+  public async searchMemories(userId = 'default', options?: any) {
+    return await this.ipc.invoke('memory:search', userId, options || {})
+  }
+
+  public async semanticSearchMemories(query: string, options?: any) {
+    return await this.ipc.invoke('memory:semanticSearch', query, options || {})
+  }
+
+  public async getMemoriesForContext(query: string, maxMemories = 5, maxTokens = 500) {
+    return await this.ipc.invoke('memory:getForContext', query, maxMemories, maxTokens)
+  }
+
+  public async getMemorySummary(userId = 'default') {
+    return await this.ipc.invoke('memory:getSummary', userId)
+  }
+
+  public async getMemoryStats(userId = 'default') {
+    return await this.ipc.invoke('memory:getStats', userId)
+  }
+
+  public async toggleMemoryPin(id: string) {
+    return await this.ipc.invoke('memory:togglePin', id)
+  }
+
+  public async toggleMemoryArchive(id: string) {
+    return await this.ipc.invoke('memory:toggleArchive', id)
+  }
+
+  public async extractMemoriesFromSession(sessionId: string, messages: any[], config?: any) {
+    return await this.ipc.invoke('memory:extractFromSession', sessionId, messages, config || {})
+  }
+
+  public async initializeMemory() {
+    return await this.ipc.invoke('memory:initialize')
+  }
+
   public minimize() {
     return this.ipc.invoke('window:minimize')
   }

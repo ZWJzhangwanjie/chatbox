@@ -16,6 +16,7 @@ import { useForm } from '@mantine/form'
 import pTimeout from 'p-timeout'
 import { type FC, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import platform from '@/platform'
 import { Modal } from '@/components/Overlay'
 import { MCPServer } from '@/packages/mcp/controller'
 import type { MCPServerConfig } from '@/packages/mcp/types'
@@ -122,17 +123,25 @@ const ConfigForm: FC<{
     <form ref={formRef} onSubmit={form.onSubmit(handleSubmit)}>
       <Stack gap="md">
         <TextInput label={t('Name')} data-autofocus required {...form.getInputProps('name')} />
-        <Radio.Group
-          required
-          label={t('Type')}
-          {...form.getInputProps('transport.type')}
-          labelProps={{ fw: 600, mb: 'xs' }}
-        >
-          <Group>
-            <Radio variant="outline" size="sm" value="http" label={t('Remote (http/sse)')} />
-            <Radio variant="outline" size="sm" value="stdio" label={t('Local (stdio)')} />
-          </Group>
-        </Radio.Group>
+        {platform.type === 'desktop' ? (
+          <Radio.Group
+            required
+            label={t('Type')}
+            {...form.getInputProps('transport.type')}
+            labelProps={{ fw: 600, mb: 'xs' }}
+          >
+            <Group>
+              <Radio variant="outline" size="sm" value="http" label={t('Remote (http/sse)')} />
+              <Radio variant="outline" size="sm" value="stdio" label={t('Local (stdio)')} />
+            </Group>
+          </Radio.Group>
+        ) : (
+          <Stack gap="xs">
+            <Text fw={600} size="sm">{t('Type')}</Text>
+            <Text size="sm">Remote (HTTP/SSE)</Text>
+            <Text size="xs" c="chatbox-tertiary">Local (stdio) is only available on desktop</Text>
+          </Stack>
+        )}
         {form.values.transport.type === 'stdio' && (
           <>
             <Textarea

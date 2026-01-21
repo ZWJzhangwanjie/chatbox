@@ -6,6 +6,8 @@ import ClearSessionList from './ClearSessionList'
 import EdgeOneDeploySuccess from './EdgeOneDeploySuccess'
 import ExportChat from './ExportChat'
 import JsonViewer from './JsonViewer'
+import MemoryDetail from './MemoryDetail'
+import MemoryEdit from './MemoryEdit'
 import MessageEdit from './MessageEdit'
 import ModelEdit from './ModelEdit'
 import OcrContentViewer from './OcrContentViewer'
@@ -30,3 +32,5 @@ NiceModal.register('model-edit', ModelEdit)
 NiceModal.register('thread-name-edit', ThreadNameEdit)
 NiceModal.register('ocr-content-viewer', OcrContentViewer)
 NiceModal.register('edgeone-deploy-success', EdgeOneDeploySuccess)
+NiceModal.register('memory-detail', MemoryDetail)
+NiceModal.register('memory-edit', MemoryEdit)

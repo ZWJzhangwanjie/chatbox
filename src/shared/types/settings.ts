@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ModelProviderEnum, ModelProviderType } from './provider'
+import { ModelPersonalizationSchema } from './personalization'
 
 // Re-export for backward compatibility
 export { ModelProviderType } from './provider'
@@ -185,6 +186,23 @@ const ExtensionSettingsSchema = z.object({
     .optional(),
 })
 
+// Memory settings types
+export const MemorySettingsSchema = z.object({
+  storageLocation: z.enum(['local', 'cloud']).optional().catch('local'),
+  retentionDays: z.number().optional().catch(0), // 0 = permanent
+  autoExtract: z.boolean().default(true),
+  extractOnMessageCount: z.number().optional().catch(10), // 每 N 条消息提取一次
+  privacyMode: z.boolean().default(false),
+})
+
+export interface MemorySettings {
+  storageLocation?: 'local' | 'cloud'
+  retentionDays?: number // 0 = permanent
+  autoExtract?: boolean
+  extractOnMessageCount?: number
+  privacyMode?: boolean
+}
+
 const MCPTransportConfigSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('stdio'),
@@ -229,6 +247,13 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
     )
     .optional()
     .catch(undefined),
+
+  // 模型个性化配置
+  modelPersonalizations: z.record(z.string(), ModelPersonalizationSchema).optional().catch(undefined),
+
+  // 记忆系统设置
+  memoryEnabled: z.boolean().default(true).optional(),
+  memorySettings: MemorySettingsSchema.optional(),
 
   // default models
   defaultChatModel: z

@@ -14,6 +14,8 @@ export enum StorageKey {
   ChatSessionSettings = 'chat-session-settings',
   PictureSessionSettings = 'picture-session-settings',
   AuthInfo = 'authInfo',
+  MemorySidebarOpen = 'memory-sidebar-open',
+  MemoryViewMode = 'memory-view-mode',
 }
 
 export const StorageKeyGenerator = {

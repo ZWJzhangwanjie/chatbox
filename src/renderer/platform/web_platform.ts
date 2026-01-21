@@ -159,6 +159,67 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
     throw new Error('Method not implemented.')
   }
 
+  // Memory operations (web stub - returns empty results)
+  public async getAllMemories(): Promise<any[]> {
+    return []
+  }
+
+  public async getMemoryById(): Promise<any> {
+    throw new Error('Memory not available on web')
+  }
+
+  public async addMemory(): Promise<any> {
+    throw new Error('Memory not available on web')
+  }
+
+  public async updateMemory(): Promise<any> {
+    throw new Error('Memory not available on web')
+  }
+
+  public async deleteMemory(): Promise<any> {
+    return { success: false }
+  }
+
+  public async deleteMemoriesBatch(): Promise<any> {
+    return { success: false, count: 0 }
+  }
+
+  public async searchMemories(): Promise<any[]> {
+    return []
+  }
+
+  public async semanticSearchMemories(): Promise<any[]> {
+    return []
+  }
+
+  public async getMemoriesForContext(): Promise<any[]> {
+    return []
+  }
+
+  public async getMemorySummary(): Promise<any> {
+    return { totalCount: 0, byType: {}, byCategory: {}, recentMemories: [], pinnedCount: 0, archivedCount: 0 }
+  }
+
+  public async getMemoryStats(): Promise<any> {
+    return { total: 0, byType: {}, bySource: {}, byCategory: {}, thisWeek: 0, thisMonth: 0 }
+  }
+
+  public async toggleMemoryPin(): Promise<any> {
+    throw new Error('Memory not available on web')
+  }
+
+  public async toggleMemoryArchive(): Promise<any> {
+    throw new Error('Memory not available on web')
+  }
+
+  public async extractMemoriesFromSession(): Promise<any> {
+    return { memories: [], confidence: 0 }
+  }
+
+  public async initializeMemory(): Promise<any> {
+    return { success: false }
+  }
+
   public minimize() {
     return Promise.resolve()
   }

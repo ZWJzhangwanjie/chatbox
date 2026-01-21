@@ -1,4 +1,5 @@
 import type { Message } from '../../shared/types'
+import type { Memory } from 'src/shared/types'
 import { getMessageText } from '../../shared/utils/message'
 
 export function nameConversation(msgs: Message[], language: string): Message[] {
@@ -179,4 +180,101 @@ Return only the continuation-ready instruction with the sections above.`,
       ],
     },
   ]
+}
+
+/**
+ * Format memories into a system message for injection into conversation context
+ */
+export function formatMemoriesContext(memories: Memory[]): string {
+  if (memories.length === 0) {
+    return ''
+  }
+
+  const sections: string[] = []
+
+  // Group memories by type
+  const preferences = memories.filter((m) => m.type === 'explicit_preference')
+  const facts = memories.filter((m) => m.type === 'explicit_fact')
+  const patterns = memories.filter((m) => m.type === 'implicit_pattern')
+  const interests = memories.filter((m) => m.type === 'implicit_interest')
+  const contexts = memories.filter((m) => m.type === 'implicit_context')
+
+  if (preferences.length > 0) {
+    sections.push('**User Preferences:**')
+    sections.push(...preferences.map((m) => `- ${m.summary || m.content}`))
+  }
+
+  if (facts.length > 0) {
+    sections.push('\n**User Information:**')
+    sections.push(...facts.map((m) => `- ${m.summary || m.content}`))
+  }
+
+  if (patterns.length > 0) {
+    sections.push('\n**Behavior Patterns:**')
+    sections.push(...patterns.map((m) => `- ${m.summary || m.content}`))
+  }
+
+  if (interests.length > 0) {
+    sections.push('\n**Interests:**')
+    sections.push(...interests.map((m) => `- ${m.summary || m.content}`))
+  }
+
+  if (contexts.length > 0) {
+    sections.push('\n**Relevant Context:**')
+    sections.push(...contexts.map((m) => `- ${m.summary || m.content}`))
+  }
+
+  return `
+=== About the User ===
+${sections.join('\n')}
+======================
+`.trim()
+}
+
+/**
+ * Create a system message with memory context for injection
+ */
+export function createMemorySystemMessage(memories: Memory[]): Message {
+  const memoryContext = formatMemoriesContext(memories)
+
+  return {
+    id: `memory_${Date.now()}`,
+    role: 'system',
+    contentParts: [
+      {
+        type: 'text',
+        text: memoryContext,
+      },
+    ],
+    metadata: {
+      type: 'memory_context',
+      memoryCount: memories.length,
+    },
+  }
+}
+
+/**
+ * Inject relevant memories into the messages array
+ * Returns a new array with memory context injected before the first user message
+ */
+export function injectMemoriesIntoMessages(messages: Message[], memories: Memory[]): Message[] {
+  if (memories.length === 0) {
+    return messages
+  }
+
+  // Find the first system message (if any)
+  const firstSystemIndex = messages.findIndex((m) => m.role === 'system')
+
+  // Create memory context message
+  const memoryMessage = createMemorySystemMessage(memories)
+
+  if (firstSystemIndex >= 0) {
+    // Insert after the first system message
+    const result = [...messages]
+    result.splice(firstSystemIndex + 1, 0, memoryMessage)
+    return result
+  } else {
+    // Insert at the beginning
+    return [memoryMessage, ...messages]
+  }
 }

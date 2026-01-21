@@ -5,6 +5,7 @@ import { identity, omit, pickBy } from 'lodash'
 import * as defaults from 'src/shared/defaults'
 import { getModel } from 'src/shared/models'
 import type { OnResultChangeWithCancel } from 'src/shared/models/types'
+import { getModelPersonalizationKey, mergePersonalizationToSessionSettings } from 'src/shared/types/personalization'
 import { v4 as uuidv4 } from 'uuid'
 import { createModelDependencies } from '@/adapters'
 import * as dom from '@/hooks/dom'
@@ -52,6 +53,139 @@ import { exportChat, initEmptyChatSession, initEmptyPictureSession } from './ses
 import * as settingActions from './settingActions'
 import { settingsStore } from './settingsStore'
 import { uiStore } from './uiStore'
+// AI功能集成导入
+import { AIFeaturesCoordinator } from '@/packages/aiFeatures'
+import { useAIFeaturesStore } from '@/stores/aiFeaturesStore'
+
+/**
+ * 应用模型个性化配置到会话设置
+ * 合并个性化配置中的参数（温度、系统提示词等）到会话设置中
+ */
+function applyModelPersonalization(
+  sessionSettings: SessionSettings,
+  globalSettings: Settings
+): SessionSettings {
+  const { provider, modelId } = sessionSettings
+  if (!provider || !modelId) {
+    return sessionSettings
+  }
+
+  const modelPersonalizations = globalSettings.modelPersonalizations || {}
+  const key = getModelPersonalizationKey(provider, modelId)
+  const personalization = modelPersonalizations[key]
+
+  if (!personalization) {
+    return sessionSettings
+  }
+
+  // 使用合并函数应用个性化配置
+  const merged = mergePersonalizationToSessionSettings(sessionSettings, personalization)
+
+  return merged as SessionSettings
+}
+
+/**
+ * 触发记忆提取（在对话完成后）
+ * 如果记忆功能已启用且自动提取开启，则在后台异步提取记忆
+ */
+async function triggerMemoryExtraction(sessionId: string) {
+  try {
+    const globalSettings = settingsStore.getState().getSettings()
+
+    // 检查记忆功能是否启用
+    if (!globalSettings.memoryEnabled) {
+      return
+    }
+
+    // 检查是否启用了自动提取
+    const memorySettings = globalSettings.memorySettings
+    if (!memorySettings?.autoExtract) {
+      return
+    }
+
+    const session = await chatStore.getSession(sessionId)
+    if (!session) {
+      return
+    }
+
+    // 只在消息数量达到一定阈值时提取（避免频繁提取）
+    const messageCountThreshold = memorySettings.extractOnMessageCount || 10
+    const userMessageCount = session.messages.filter((m) => m.role === 'user').length
+
+    // 检查消息数量是否达到阈值
+    if (userMessageCount % messageCountThreshold !== 0) {
+      return
+    }
+
+    console.log('[Memory] Triggering memory extraction for session:', sessionId)
+
+    // 异步提取记忆（不阻塞主流程）
+    platform
+      .extractMemoriesFromSession(sessionId, session.messages)
+      .then((result) => {
+        console.log('[Memory] Extraction completed:', {
+          sessionId,
+          extractedCount: result.memories.length,
+          confidence: result.confidence,
+        })
+      })
+      .catch((error) => {
+        console.error('[Memory] Extraction failed:', error)
+      })
+  } catch (error) {
+    console.error('[Memory] Failed to trigger memory extraction:', error)
+  }
+}
+
+/**
+ * 注入相关记忆到消息列表
+ * 在生成回复前获取相关记忆并注入到消息上下文中
+ */
+async function injectMemories(session: Session, userQuery?: string): Promise<Message[]> {
+  try {
+    const globalSettings = settingsStore.getState().getSettings()
+
+    // 检查记忆功能是否启用
+    if (!globalSettings.memoryEnabled) {
+      return session.messages
+    }
+
+    // 获取用户查询用于语义搜索
+    const queryText = userQuery || (() => {
+      // 如果没有提供查询，使用最近的用户消息
+      const recentUserMessages = session.messages.filter((m) => m.role === 'user').slice(-1)
+      if (recentUserMessages.length > 0) {
+        return getMessageText(recentUserMessages[0])
+      }
+      return ''
+    })()
+
+    if (!queryText.trim()) {
+      return session.messages
+    }
+
+    console.log('[Memory] Retrieving memories for query:', queryText)
+
+    // 获取相关记忆
+    const memories = await platform.getMemoriesForContext(queryText, 5, 500)
+
+    if (memories.length === 0) {
+      console.log('[Memory] No relevant memories found')
+      return session.messages
+    }
+
+    console.log(`[Memory] Found ${memories.length} relevant memories`)
+
+    // 导入记忆注入函数
+    const { injectMemoriesIntoMessages } = await import('../packages/prompts')
+
+    // 注入记忆到消息列表
+    return injectMemoriesIntoMessages(session.messages, memories)
+  } catch (error) {
+    console.error('[Memory] Failed to inject memories:', error)
+    return session.messages
+  }
+}
 
 /**
  * 跟踪生成事件
@@ -600,6 +734,35 @@ export async function submitNewUserMessage(
   // 先在聊天列表中插入发送的用户消息
   await insertMessage(sessionId, newUserMsg)
 
+  // [🧠 THINK MODE] 检查是否开启Think模式
+  const { thinkModeEnabled } = useAIFeaturesStore.getState()
+
+  // 如果开启Think模式且需要生成回复，执行Think模式
+  if (thinkModeEnabled && needGenerating) {
+    try {
+      // 重新获取session，确保包含新插入的用户消息
+      const updatedSession = await chatStore.getSession(sessionId)
+      if (!updatedSession) {
+        console.error('[🧠 THINK MODE] Failed to get updated session')
+        return
+      }
+
+      const thinkSuccess = await executeThinkModeForMessage(
+        sessionId,
+        newUserMsg,
+        updatedSession,
+        settings,
+        settingsStore.getState().getSettings()
+      )
+
+      if (thinkSuccess) {
+        return // Think模式已处理，跳过原有流程
+      }
+    } catch (error) {
+      console.error('[🧠 THINK MODE] Error in executeThinkModeForMessage:', error)
+    }
+  }
+
   const globalSettings = settingsStore.getState().getSettings()
   const isPro = settingActions.isPro()
   const remoteConfig = settingActions.getRemoteConfig()
@@ -633,7 +796,11 @@ export async function submitNewUserMessage(
     // 如果本次消息开启了联网问答，需要检查当前模型是否支持
     // 桌面版&手机端总是支持联网问答，不再需要检查模型是否支持
     const dependencies = await createModelDependencies()
-    const model = getModel(settings, globalSettings, { uuid: '' }, dependencies)
+
+    // 应用个性化配置到会话设置
+    const personalizedSettings = applyModelPersonalization(settings, globalSettings)
+
+    const model = getModel(personalizedSettings, globalSettings, { uuid: '' }, dependencies)
     if (webBrowsing && platform.type === 'web' && !model.isSupportToolUse()) {
       if (remoteConfig.setting_chatboxai_first) {
         throw ChatboxAIAPIError.fromCodeName('model_not_support_web_browsing', 'model_not_support_web_browsing')
@@ -767,7 +934,9 @@ async function generate(
 
   try {
     const dependencies = await createModelDependencies()
-    const model = getModel(settings, globalSettings, configs, dependencies)
+    // 应用个性化配置到会话设置
+    const personalizedSettings = applyModelPersonalization(settings, globalSettings)
+    const model = getModel(personalizedSettings, globalSettings, configs, dependencies)
     const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]
     const webBrowsing = uiStore.getState().inputBoxWebBrowsingMode
@@ -779,7 +948,10 @@ async function generate(
         let firstTokenLatency: number | undefined
         const persistInterval = 2000
         let lastPersistTimestamp = Date.now()
-        const promptMsgs = await genMessageContext(settings, messages.slice(0, targetMsgIx), model.isSupportToolUse())
+
+        // 注入相关记忆到消息列表
+        const messagesForContext = await injectMemories(session, getMessageText(messages.slice(0, targetMsgIx).findLast((m) => m.role === 'user') || messages[targetMsgIx - 1]))
+        const promptMsgs = await genMessageContext(personalizedSettings, messagesForContext.slice(0, -1), model.isSupportToolUse())
         const modifyMessageCache: OnResultChangeWithCancel = async (updated) => {
           const textLength = getMessageText(targetMsg, true, true).length
           if (!firstTokenLatency && textLength > 0) {
@@ -817,6 +989,15 @@ async function generate(
           usage: result.usage,
         }
         await modifyMessage(sessionId, targetMsg, true)
+
+        // AI功能触发：在AI回复完成后生成追问和推荐
+        await triggerAIFeaturesAfterResponse(sessionId, targetMsg, session)
+
+        // 记忆提取：在对话完成后异步提取记忆
+        triggerMemoryExtraction(sessionId).catch((error) => {
+          console.error('[Memory] Failed to trigger memory extraction:', error)
+        })
+
         break
       }
       // 图片消息生成
@@ -984,7 +1165,9 @@ async function _generateName(sessionId: string, modifyName: (sessionId: string, 
   const configs = await platform.getConfig()
   try {
     const dependencies = await createModelDependencies()
-    const model = getModel(settings, globalSettings, configs, dependencies)
+    // 应用个性化配置到会话设置（即使是命名模型也可能有个性化配置）
+    const personalizedSettings = applyModelPersonalization(settings, globalSettings)
+    const model = getModel(personalizedSettings, globalSettings, configs, dependencies)
     const result = await generateText(
       model,
       promptFormat.nameConversation(
@@ -1637,3 +1820,287 @@ export async function expandFork(sessionId: string, forkMessageId: string) {
     }
   })
 }
+
+// ========== AI功能集成 ==========
+
+/**
+ * 触发AI功能（追问和推荐）
+ * 在AI回复完成后自动生成追问建议和主动推荐
+ */
+async function triggerAIFeaturesAfterResponse(
+  sessionId: string,
+  aiMessage: Message,
+  session: Session
+) {
+  const { followUpEnabled, recommendationEnabled, setSessionFeatures } = useAIFeaturesStore.getState();
+
+  console.log('[AI Features] Triggering with settings:', {
+    followUpEnabled,
+    recommendationEnabled,
+    messagesCount: session.messages.length
+  });
+
+  // 强制禁用推荐功能（暂时）
+  const enableFollowUp = followUpEnabled;
+  const enableRecommendation = false; // 强制禁用
+
+  if (!enableFollowUp && !enableRecommendation) {
+    console.log('[AI Features] Both features disabled, skipping');
+    return;
+  }
+
+  // 获取会话设置
+  const sessionSettings = await chatStore.getSessionSettings(sessionId);
+
+  try {
+    const coordinator = new AIFeaturesCoordinator({
+      followUp: {
+        maxSuggestions: 4,
+        minConfidence: 0.6,
+        enableLLM: false,
+      },
+      recommendation: {
+        maxPerType: 3,
+        minRelevanceScore: 0.5,
+        refreshInterval: 3,
+        enableCollaborativeFiltering: false,
+      },
+      thinkMode: useAIFeaturesStore.getState().thinkModeConfig,
+    });
+
+    console.log('[AI Features] Calling coordinator.handleAfterResponse...');
+
+    const results = await coordinator.handleAfterResponse(
+      aiMessage,
+      session.messages,
+      {
+        followUpEnabled: enableFollowUp,
+        recommendationEnabled: enableRecommendation,
+      },
+      sessionSettings
+    );
+
+    console.log('[AI Features] Results:', {
+      followUpCount: results.followUpSuggestions.length,
+      recommendationCount: results.recommendations.length,
+      followUpSuggestions: results.followUpSuggestions,
+      recommendations: results.recommendations
+    });
+
+    // 存储结果到 aiFeaturesStore
+    if (results.followUpSuggestions.length > 0 || results.recommendations.length > 0) {
+      setSessionFeatures(sessionId, {
+        followUpSuggestions: results.followUpSuggestions,
+        recommendations: results.recommendations,
+        timestamp: Date.now(),
+      });
+      console.log('[AI Features] Stored results for session:', sessionId);
+    } else {
+      console.log('[AI Features] No suggestions or recommendations generated');
+    }
+  } catch (error) {
+    console.error("[AI Features] Trigger failed:", error);
+  }
+}
+
+/**
+ * 执行Think模式（思维链推理）
+ * 在AI回复前展示思考过程 - 支持流式打字机效果
+ */
+export async function executeThinkModeForMessage(
+  sessionId: string,
+  userMessage: Message,
+  session: Session,
+  settings: SessionSettings,
+  globalSettings: Settings
+): Promise<boolean> {
+  const { thinkModeEnabled, thinkModeConfig, setThoughtProcess } = useAIFeaturesStore.getState();
+
+  if (!thinkModeEnabled) {
+    return false;
+  }
+
+  let answerMsg: Message | null = null;
+
+  try {
+    const { ThinkModeEngine } = await import("@/packages/aiFeatures/thinkMode/core/engine.integration");
+
+    // 构建配置对象
+    const config = {
+      enabled: true,
+      strategy: thinkModeConfig.strategy as 'cot' | 'self_consistency' | 'tree_of_thoughts',
+      maxSteps: thinkModeConfig.maxSteps,
+      defaultCollapsed: thinkModeConfig.defaultCollapsed,
+      showDuration: true,
+      allowInterrupt: true,
+      timeout: 60000,
+    };
+
+    const thinkEngine = new ThinkModeEngine(config);
+
+    // 1. 先创建一个"思考中"的答案消息
+    answerMsg = createMessage("assistant", "💭 正在深入思考...");
+    answerMsg.metadata = {
+      generatedFromThink: true,
+      isThinking: true,
+    } as any;
+
+    await insertMessage(sessionId, answerMsg);
+
+    // 2. 准备流式回调 - 实时更新思考过程到store
+    let currentSteps: any[] = [];
+
+    const streamCallbacks = {
+      onStepStart: (step: any) => {
+        // 更新当前步骤列表
+        currentSteps = [...currentSteps, step];
+
+        // 实时更新到store（触发UI更新）
+        const thoughtProcess = {
+          steps: currentSteps,
+          startTime: Date.now(),
+          status: 'thinking' as const,
+        };
+
+        setThoughtProcess(sessionId, answerMsg!.id, thoughtProcess);
+      },
+
+      onStepUpdate: (step: any, content: string) => {
+        // 更新对应步骤
+        currentSteps = currentSteps.map(s =>
+          s.order === step.order ? { ...s, content } : s
+        );
+
+        // 实时更新到store
+        const thoughtProcess = {
+          steps: currentSteps,
+          startTime: Date.now(),
+          status: 'thinking' as const,
+        };
+
+        setThoughtProcess(sessionId, answerMsg!.id, thoughtProcess);
+      },
+
+      onProgress: (content: string) => {
+        // 可选：显示原始进度
+      },
+    };
+
+    // 3. 执行思考（流式）
+    const userMsgText = getMessageText(userMessage);
+    const messages = session.messages.slice(0, session.messages.findIndex(m => m.id === userMessage.id));
+
+    // 答案流式回调 - 实时更新消息内容
+    const onAnswerChunk = async (chunk: string) => {
+      // 实时更新消息内容
+      const streamingMsg = {
+        ...answerMsg,
+        contentParts: [{ type: 'text', text: chunk }],
+        metadata: {
+          generatedFromThink: true,
+          isThinking: false,
+          isGenerating: true,
+        } as any,
+      };
+      await modifyMessage(sessionId, streamingMsg, false);
+    };
+
+    const thinkResponse = await thinkEngine.think(
+      {
+        prompt: userMsgText,
+        context: messages,
+        config: config,
+      },
+      settings,
+      undefined,
+      streamCallbacks,
+      onAnswerChunk  // 传入答案流式回调
+    );
+
+    // 4. 确保最终答案完整显示
+    const updatedAnswerMsg = {
+      ...answerMsg,
+      contentParts: [{ type: 'text', text: thinkResponse.finalAnswer }],
+      metadata: {
+        generatedFromThink: true,
+        isThinking: false,
+        isGenerating: false,
+      } as any,
+    };
+
+    await modifyMessage(sessionId, updatedAnswerMsg, false);
+
+    // 5. 将最终的思考过程存储到aiFeaturesStore
+    setThoughtProcess(sessionId, answerMsg.id, thinkResponse.thoughtProcess);
+
+    // 6. 触发追问和推荐
+    // 需要重新获取 session，因为它现在包含了新更新的答案消息
+    const updatedSession = await chatStore.getSession(sessionId);
+    if (updatedSession) {
+      await triggerAIFeaturesAfterResponse(sessionId, updatedAnswerMsg, updatedSession);
+    }
+
+    return true;
+  } catch (error) {
+    console.error('[🧠 THINK MODE EXECUTE] ❌ Error:', error);
+    console.error('[🧠 THINK MODE EXECUTE] Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    // 如果出错，更新消息显示错误
+    if (answerMsg) {
+      const errorMsg = {
+        ...answerMsg,
+        contentParts: [{ type: 'text', text: '思考过程出现问题，请重试。' }],
+        metadata: {
+          generatedFromThink: true,
+          isThinking: false,
+          error: true,
+        } as any,
+      };
+      await modifyMessage(sessionId, errorMsg, false);
+    }
+
+    return false;
+  }
+}
+
+/**
+ * 扩展的submitNewUserMessage - 支持Think模式
+ * 在原有submitNewUserMessage基础上添加Think模式检查
+ */
+export async function submitNewUserMessageWithThinkMode(
+  sessionId: string,
+  params: { newUserMsg: Message; needGenerating: boolean }
+) {
+  const session = await chatStore.getSession(sessionId);
+  const settings = await chatStore.getSessionSettings(sessionId);
+  if (!session || !settings) {
+    return;
+  }
+
+  const { thinkModeEnabled } = useAIFeaturesStore.getState();
+
+  // 先插入用户消息
+  await insertMessage(sessionId, params.newUserMsg);
+
+  // 如果开启Think模式且需要生成回复
+  if (thinkModeEnabled && params.needGenerating) {
+    const thinkSuccess = await executeThinkModeForMessage(
+      sessionId,
+      params.newUserMsg,
+      session,
+      settings,
+      settingsStore.getState().getSettings()
+    );
+
+    if (thinkSuccess) {
+      return; // Think模式已处理
+    }
+  }
+
+  // 否则使用原始流程
+  return submitNewUserMessage(sessionId, params);
+}
+

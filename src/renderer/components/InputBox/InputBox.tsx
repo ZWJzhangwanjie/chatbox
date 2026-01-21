@@ -75,6 +75,7 @@ import {
   storeLinkPromise,
 } from './preprocessState'
 import { SessionSettingsButton } from './SessionSettingsButton'
+import ThinkModeToggle from './ThinkModeToggle'
 import TokenCountMenu from './TokenCountMenu'
 import { WebBrowsingButton } from './WebBrowsingButton'
 
@@ -803,6 +804,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     />
                   </Tooltip>
 
+                  <ThinkModeToggle />
+
                   {showRollbackThreadButton ? (
                     <Tooltip label={t('Back to Previous')} withArrow position="top-start">
                       <ActionIcon size={24} variant="subtle" color="chatbox-secondary" onClick={rollbackThread}>
@@ -868,6 +871,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     }}
                     isMobile
                   />
+
+                  <ThinkModeToggle isMobile />
 
                   <Menu
                     trigger={isSmallScreen ? 'click' : 'hover'}

@@ -1,0 +1,137 @@
+.container {
+  margin-top: 12px;
+}
+
+.steps {
+  position: relative;
+}
+
+.step {
+  position: relative;
+  padding: 12px 0;
+}
+
+.stepHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.stepNumber {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.stepInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.stepTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.stepTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
+
+.typeBadge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.typeBadge.understanding {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+}
+
+.typeBadge.decomposition {
+  background: rgba(139, 92, 246, 0.1);
+  color: #8b5cf6;
+}
+
+.typeBadge.analysis {
+  background: rgba(6, 182, 212, 0.1);
+  color: #06b6d4;
+}
+
+.typeBadge.reasoning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.typeBadge.verification {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+
+.typeBadge.summary {
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+}
+
+.stepIcon {
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.stepContent {
+  margin-left: 40px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+
+.stepText {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 0;
+}
+
+.connector {
+  position: absolute;
+  left: 13px;
+  top: 40px;
+  bottom: -12px;
+  width: 2px;
+}
+
+.connectorLine {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.3) 0%, rgba(139, 92, 246, 0.1) 100%);
+}
+
+.complete {
+  margin-top: 16px;
+  padding: 8px 12px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #10b981;
+}

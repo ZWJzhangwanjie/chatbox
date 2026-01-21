@@ -28,6 +28,7 @@ let vectorStore: LibSQLVector
 async function initDB(db: Client) {
   try {
     await db.batch([
+      // 知识库表
       `CREATE TABLE IF NOT EXISTS knowledge_base (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
@@ -36,6 +37,7 @@ async function initDB(db: Client) {
         vision_model TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )`,
+      // 知识库文件表
       `CREATE TABLE IF NOT EXISTS kb_file (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         kb_id INTEGER NOT NULL,
@@ -51,6 +53,50 @@ async function initDB(db: Client) {
         processing_started_at DATETIME,
         FOREIGN KEY (kb_id) REFERENCES knowledge_base(id)
       )`,
+      // ==================== 记忆系统表 ====================
+      // 记忆主表
+      `CREATE TABLE IF NOT EXISTS user_memory (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL DEFAULT 'default',
+        type TEXT NOT NULL,
+        source TEXT NOT NULL,
+        content TEXT NOT NULL,
+        summary TEXT,
+        embedding_id TEXT,
+        importance REAL DEFAULT 0.5,
+        confidence REAL DEFAULT 0.5,
+        priority INTEGER DEFAULT 2,
+        category TEXT,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL,
+        last_accessed_at INTEGER NOT NULL,
+        access_count INTEGER DEFAULT 0,
+        related_session_id TEXT,
+        related_model_id TEXT,
+        tags TEXT,
+        expires_at INTEGER,
+        archived INTEGER DEFAULT 0,
+        pinned INTEGER DEFAULT 0
+      )`,
+      // 记忆-会话关联表（用于溯源）
+      `CREATE TABLE IF NOT EXISTS memory_session_link (
+        memory_id TEXT NOT NULL,
+        session_id TEXT NOT NULL,
+        message_id TEXT,
+        created_at INTEGER NOT NULL,
+        PRIMARY KEY (memory_id, session_id),
+        FOREIGN KEY (memory_id) REFERENCES user_memory(id) ON DELETE CASCADE
+      )`,
+      // 记忆访问日志（用于分析重要性和访问模式）
+      `CREATE TABLE IF NOT EXISTS memory_access_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        memory_id TEXT NOT NULL,
+        accessed_at INTEGER NOT NULL,
+        context TEXT,
+        FOREIGN KEY (memory_id) REFERENCES user_memory(id) ON DELETE CASCADE
+      )`,
+      // 记忆向量索引（通过 LibSQL 的向量功能）
+      // 实际的向量索引会在嵌入器中创建
     ])
     // Add total_chunks column if it doesn't exist (for existing databases)
     await db.batch([`ALTER TABLE kb_file ADD COLUMN total_chunks INTEGER DEFAULT 0`]).catch((error) => {

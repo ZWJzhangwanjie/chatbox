@@ -3,13 +3,15 @@ import {
   IconAdjustmentsHorizontal,
   IconBook,
   IconBox,
+  IconBrain,
   IconCategory,
   IconChevronLeft,
   IconChevronRight,
   IconCircleDottedLetterM,
   IconKeyboard,
   IconMessages,
-  IconWorldWww
+  IconPalette,
+  IconWorldWww,
 } from '@tabler/icons-react'
 import { createFileRoute, Link, Outlet, useCanGoBack, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
@@ -31,6 +33,16 @@ const ITEMS = [
     key: 'default-models',
     label: 'Default Models',
     icon: <IconBox className="w-full h-full" />,
+  },
+  {
+    key: 'model-personalization',
+    label: 'Model Personalization',
+    icon: <IconPalette className="w-full h-full" />,
+  },
+  {
+    key: 'memory',
+    label: 'Memory',
+    icon: <IconBrain className="w-full h-full" />,
   },
   {
     key: 'web-search',

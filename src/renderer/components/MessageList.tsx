@@ -45,12 +45,14 @@ import {
 import { getAllMessageList, getCurrentThreadHistoryHash } from '@/stores/sessionHelpers'
 import { settingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
+import { useAIFeaturesStore } from '@/stores/aiFeaturesStore'
 import ActionMenu from './ActionMenu'
 import { ErrorBoundary } from './ErrorBoundary'
 import { BlockCodeCollapsedStateProvider } from './Markdown'
 import Message from './Message'
 import MessageNavigation, { ScrollToBottomButton } from './MessageNavigation'
 import { ScalableIcon } from './ScalableIcon'
+import { AIFeaturesMessage } from '@/packages/aiFeatures/integration/MessageComponents'
 
 const sessionScrollPositionCache = new Map<string, StateSnapshot>()
 
@@ -75,6 +77,15 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
     [currentSession]
   )
   const currentMessageList = useMemo(() => getAllMessageList(currentSession), [currentSession])
+
+  // 稳定最后一条消息的引用，避免 AIFeaturesMessage 无限重渲染
+  const lastMessage = useMemo(() => {
+    if (currentMessageList.length === 0) return null
+    return currentMessageList[currentMessageList.length - 1]
+  }, [currentMessageList])
+
+  // 订阅 AI 功能数据变化，触发重新渲染
+  const sessionFeatures = useAIFeaturesStore((s) => s.sessionFeatures[currentSession.id])
 
   const virtuoso = useRef<VirtuosoHandle>(null)
   const messageListRef = useRef<HTMLDivElement>(null)
@@ -251,12 +262,29 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                 })}
             increaseViewportBy={{ top: 2000, bottom: 2000 }}
             itemContent={(index, msg) => {
+              const isLastMessage = index === currentMessageList.length - 1;
+              const showAIFeatures = isLastMessage && msg.role === 'assistant';
+
+              // 使用订阅的 AI 功能数据（而不是 getState()）
+              const aiFeaturesData = showAIFeatures ? sessionFeatures : null;
+
+              // 优先级：推荐 > 追问（只显示一个）
+              const hasRecommendations = aiFeaturesData && aiFeaturesData.recommendations && aiFeaturesData.recommendations.length > 0;
+              const hasFollowUp = !hasRecommendations && aiFeaturesData && aiFeaturesData.followUpSuggestions && aiFeaturesData.followUpSuggestions.length > 0;
+
+              const hasAIFeatures = hasRecommendations || hasFollowUp;
+
+              // 根据优先级选择要显示的数据
+              const displayRecommendations = hasRecommendations ? aiFeaturesData.recommendations : [];
+              const displayFollowUpSuggestions = hasFollowUp ? aiFeaturesData.followUpSuggestions : [];
+
               return (
                 <Stack
                   key={msg.id}
                   gap={0}
                   className={widthFull ? 'w-full' : 'max-w-4xl mx-auto'}
                   pt={msg.role === 'user' ? 4 : 0}
+                  mb={showAIFeatures && hasAIFeatures ? '0' : undefined}
                 >
                   {currentThreadHash[msg.id] && (
                     <ThreadLabel thread={currentThreadHash[msg.id]} sessionId={currentSession.id} />
@@ -286,6 +314,18 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                         />
                       </Flex>
                     )}
+
+                  {/* AI功能组件 - 在最后一条AI消息后显示 */}
+                  {showAIFeatures && hasAIFeatures && (
+                    <ErrorBoundary name={`ai-features`}>
+                      <AIFeaturesMessage
+                        key={`${currentSession.id}-${msg.id}-${aiFeaturesData?.timestamp || Date.now()}`}
+                        sessionId={currentSession.id}
+                        followUpSuggestions={displayFollowUpSuggestions}
+                        recommendations={displayRecommendations}
+                      />
+                    </ErrorBoundary>
+                  )}
                 </Stack>
               )
             }}

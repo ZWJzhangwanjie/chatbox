@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: <any> */
 import type { Config, Language, Settings, ShortcutSetting } from 'src/shared/types'
 import type { KnowledgeBaseController } from './knowledge-base/interface'
+import type { Memory, MemorySearchOptions, MemoryStats, MemorySummary, ExtractionConfig } from 'src/shared/types'
 
 export type PlatformType = 'web' | 'desktop' | 'mobile'
 
@@ -70,6 +71,27 @@ export interface Platform extends Storage {
   installUpdate(): Promise<void>
 
   getKnowledgeBaseController(): KnowledgeBaseController
+
+  // Memory operations
+  getAllMemories(userId?: string): Promise<Memory[]>
+  getMemoryById(id: string): Promise<Memory>
+  addMemory(memory: Omit<Memory, 'embeddingId' | 'id' | 'createdAt' | 'updatedAt' | 'lastAccessedAt' | 'accessCount'>): Promise<Memory>
+  updateMemory(id: string, updates: Partial<Memory>): Promise<Memory>
+  deleteMemory(id: string): Promise<{ success: boolean }>
+  deleteMemoriesBatch(ids: string[]): Promise<{ success: boolean; count: number }>
+  searchMemories(userId?: string, options?: MemorySearchOptions): Promise<Memory[]>
+  semanticSearchMemories(query: string, options?: MemorySearchOptions): Promise<Memory[]>
+  getMemoriesForContext(query: string, maxMemories?: number, maxTokens?: number): Promise<Memory[]>
+  getMemorySummary(userId?: string): Promise<MemorySummary>
+  getMemoryStats(userId?: string): Promise<MemoryStats>
+  toggleMemoryPin(id: string): Promise<Memory>
+  toggleMemoryArchive(id: string): Promise<Memory>
+  extractMemoriesFromSession(sessionId: string, messages: any[], config?: ExtractionConfig): Promise<{
+    memories: Memory[]
+    confidence: number
+    reasoning?: string
+  }>
+  initializeMemory(): Promise<{ success: boolean }>
 
   // window controls
   minimize(): Promise<void>

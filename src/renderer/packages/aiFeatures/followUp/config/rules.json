@@ -1,0 +1,108 @@
+{
+  "rules": [
+    {
+      "id": "learning_topic",
+      "keywords": ["学", "怎么", "如何", "学习", "掌握", "了解", "入门"],
+      "type": "elaboration",
+      "confidence": 0.85,
+      "conditions": {
+        "minLength": 2
+      },
+      "suggestions": [
+        "{topic}有哪些应用场景？",
+        "推荐一些{topic}的学习资源",
+        "如何制定{topic}的学习计划？",
+        "{topic}需要什么基础知识？",
+        "{topic}的学习难度如何？"
+      ]
+    },
+    {
+      "id": "coding_help",
+      "keywords": ["代码", "编程", "实现", "写一个", "怎么写", "如何写"],
+      "type": "action",
+      "confidence": 0.9,
+      "suggestions": [
+        "能否给出完整的代码示例？",
+        "这段代码如何优化？",
+        "有没有更好的实现方式？",
+        "如何测试这段代码？",
+        "这段代码有哪些常见错误？"
+      ]
+    },
+    {
+      "id": "comparison",
+      "keywords": ["区别", "对比", "哪个好", "选择", "vs", "和", "还是"],
+      "type": "clarification",
+      "confidence": 0.8,
+      "suggestions": [
+        "它们的使用场景有什么不同？",
+        "从性能角度看哪个更优？",
+        "学习难度如何对比？",
+        "未来的发展趋势如何？",
+        "可以同时使用吗？"
+      ]
+    },
+    {
+      "id": "troubleshooting",
+      "keywords": ["错误", "bug", "问题", "不工作", "失败", "报错"],
+      "type": "action",
+      "confidence": 0.95,
+      "suggestions": [
+        "如何排查这个错误？",
+        "有没有常见的解决方案？",
+        "能提供调试建议吗？",
+        "这个错误通常是什么原因导致的？",
+        "有没有类似的案例可以参考？"
+      ]
+    },
+    {
+      "id": "creative_writing",
+      "keywords": ["写", "创作", "生成", "设计", "构思"],
+      "type": "elaboration",
+      "confidence": 0.75,
+      "suggestions": [
+        "能否提供更多创意方向？",
+        "如何让内容更有吸引力？",
+        "需要包含哪些关键要素？",
+        "有没有相关的优秀案例？",
+        "如何避免创作中的常见问题？"
+      ]
+    },
+    {
+      "id": "best_practices",
+      "keywords": ["最佳实践", "规范", "标准", "建议", "应该"],
+      "type": "elaboration",
+      "confidence": 0.8,
+      "suggestions": [
+        "有没有行业通用的标准？",
+        "如何判断是否遵循了最佳实践？",
+        "有哪些常见的反模式需要避免？",
+        "这些实践在不同场景下如何调整？"
+      ]
+    },
+    {
+      "id": "concept_explanation",
+      "keywords": ["什么是", "解释", "原理", "机制", "为什么"],
+      "type": "clarification",
+      "confidence": 0.78,
+      "suggestions": [
+        "能用通俗的语言解释一下吗？",
+        "有没有具体的例子帮助理解？",
+        "这个概念的历史背景是什么？",
+        "与其他相关概念有什么区别？"
+      ]
+    },
+    {
+      "id": "tool_selection",
+      "keywords": ["工具", "软件", "框架", "库", "使用什么"],
+      "type": "action",
+      "confidence": 0.82,
+      "suggestions": [
+        "有哪些主流的工具可以选择？",
+        "不同工具的优缺点是什么？",
+        "如何选择适合我的工具？",
+        "这些工具的学习成本如何？"
+      ]
+    }
+  ]
+}

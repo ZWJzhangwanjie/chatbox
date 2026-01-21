@@ -37,6 +37,7 @@ import storage from '@/storage'
 import { getSession } from '@/stores/chatStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
+import { useAIFeaturesStore } from '@/stores/aiFeaturesStore'
 import type { Message, MessagePicture, MessageToolCallPart, SessionType } from '../../shared/types'
 import { getMessageText } from '../../shared/utils/message'
 import '../static/Block.css'
@@ -51,6 +52,7 @@ import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
 import { ReasoningContentUI, ToolCallPartUI } from './message-parts/ToolCallPartUI'
 import { ScalableIcon } from './ScalableIcon'
+import { ThinkIndicator } from '@/packages/aiFeatures/thinkMode'
 
 interface Props {
   id?: string
@@ -365,6 +367,10 @@ const _Message: FC<Props> = (props) => {
                   // 正常情况下，应该考虑优化 msg-content 的样式。现在这里是一个临时的偷懒方式。
                   getMessageText(msg, true, true).trim() === '' && <p></p>
                 }
+                {/* 🧠 THINK MODE - 在AI消息内容前显示思考过程 */}
+                {msg.role === 'assistant' && (msg.metadata as any)?.generatedFromThink && (
+                  <ThinkProcessInMessage msg={msg} sessionId={sessionId} />
+                )}
                 {contentParts && contentParts.length > 0 && (
                   <div>
                     {contentParts.map((item, index) =>
@@ -719,3 +725,32 @@ export const MessageActionIcon = forwardRef<
     actionIcon
   )
 })
+
+// 🧠 THINK MODE - 在消息内部显示思考过程
+interface ThinkProcessInMessageProps {
+  msg: Message
+  sessionId: string
+}
+
+const ThinkProcessInMessage: FC<ThinkProcessInMessageProps> = memo(({ msg, sessionId }) => {
+  // 直接从store获取sessionFeatures数据
+  const sessionFeatures = useAIFeaturesStore((s) => s.sessionFeatures[sessionId]);
+
+  // 获取思考过程
+  const thoughtProcess = sessionFeatures?.thinkMessageId === msg.id
+    ? sessionFeatures?.thoughtProcess
+    : undefined;
+
+  if (!thoughtProcess || thoughtProcess.steps.length === 0) {
+    return null;
+  }
+
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      <ThinkIndicator
+        thoughtProcess={thoughtProcess}
+        defaultCollapsed={true}
+      />
+    </div>
+  );
+});

@@ -44,7 +44,7 @@ function RouteComponent() {
             <Stack flex={1} gap="xxs">
               <Flex justify="space-between" align="center">
                 <Title order={5} lh={1.5}>
-                  Chatbox {/\d/.test(version.version) ? `(v${version.version})` : ''}
+                  Tappy {/\d/.test(version.version) ? `(v${version.version})` : ''}
                 </Title>
 
                 {!isSmallScreen && (

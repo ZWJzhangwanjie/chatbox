@@ -32,7 +32,6 @@ import { ResponseStyle } from 'src/shared/types/personalization'
 import { getModelPersonalizationKey } from 'src/shared/types/personalization'
 import NiceModal from '@ebay/nice-modal-react'
 import LazySlider from '@/components/LazySlider'
-import CustomInstructionDialog from '@/components/CustomInstructionDialog'
 
 export const Route = createFileRoute('/settings/model-personalization')({
   component: RouteComponent,

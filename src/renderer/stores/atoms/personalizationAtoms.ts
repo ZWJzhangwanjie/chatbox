@@ -2,6 +2,7 @@ import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 import { focusAtom } from 'jotai-optics'
 import type { ModelPersonalization, ResponseStyle } from 'src/shared/types/personalization'
+import type { Settings } from 'src/shared/types'
 import { settingsAtom } from './settingsAtoms'
 import storage, { StorageKey } from '@/storage'
 

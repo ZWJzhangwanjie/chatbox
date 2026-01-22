@@ -40,7 +40,7 @@ if (!skipDLLs && !(fs.existsSync(webpackPaths.dllPath) && fs.existsSync(manifest
 }
 
 const configuration: webpack.Configuration = {
-  devtool: 'inline-source-map',
+  devtool: false,  // 关闭 source map 提升性能
 
   mode: 'development',
 

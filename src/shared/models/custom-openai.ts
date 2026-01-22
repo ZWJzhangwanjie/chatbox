@@ -65,8 +65,9 @@ export default class CustomOpenAI extends AbstractAISDKModel {
 
   protected getChatModel(options: CallChatCompletionOptions) {
     const { apiHost, apiPath } = this.options
+    const fullUrl = `${apiHost}${apiPath}`
     const provider = this.getProvider(options, async (_input, init) => {
-      return createFetchWithProxy(this.options.useProxy, this.dependencies)(`${apiHost}${apiPath}`, init)
+      return createFetchWithProxy(this.options.useProxy, this.dependencies)(fullUrl, init)
     })
     return wrapLanguageModel({
       model: provider.languageModel(this.options.model.modelId),

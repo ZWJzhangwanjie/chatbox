@@ -216,17 +216,15 @@ const ModelEdit = NiceModal.create((props: { model?: ProviderModelInfo; provider
         </Stack>
 
         <Flex align="center" justify="flex-end" gap="xs">
-          <Text>
-            {testState.basicTest?.status === 'success' ? (
-              <Text c="chatbox-success">{t('Test successful')}</Text>
-            ) : testState.basicTest?.status === 'error' ? (
-              <Tooltip label={testState.basicTest.error} multiline maw={300}>
-                <Text c="chatbox-error" style={{ cursor: 'help' }}>
-                  {t('Test failed')}
-                </Text>
-              </Tooltip>
-            ) : null}
-          </Text>
+          {testState.basicTest?.status === 'success' ? (
+            <Text c="chatbox-success">{t('Test successful')}</Text>
+          ) : testState.basicTest?.status === 'error' ? (
+            <Tooltip label={testState.basicTest.error} multiline maw={300}>
+              <Text c="chatbox-error" style={{ cursor: 'help' }}>
+                {t('Test failed')}
+              </Text>
+            </Tooltip>
+          ) : null}
           <Button onClick={handleCancel} color="chatbox-gray" variant="light">
             {t('Cancel')}
           </Button>

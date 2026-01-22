@@ -317,6 +317,23 @@ export function getModel(
         },
         dependencies
       )
+
+    case ModelProviderEnum.CursorAI:
+      return new CustomOpenAI(
+        {
+          apiKey: providerSetting.apiKey || providerBaseInfo.defaultSettings?.apiKey || '',
+          apiHost: formattedApiHost,
+          apiPath: providerSetting.apiPath || '',
+          model,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxOutputTokens: settings.maxTokens,
+          stream: settings.stream,
+          useProxy: providerSetting.useProxy,
+        },
+        dependencies
+      )
+
     default:
       if (providerBaseInfo.isCustom) {
         switch (providerBaseInfo.type) {
@@ -403,6 +420,7 @@ export const aiProviderNameHash: Record<ModelProvider, string> = {
   [ModelProviderEnum.Perplexity]: 'Perplexity API',
   [ModelProviderEnum.XAI]: 'xAI API',
   [ModelProviderEnum.OpenRouter]: 'OpenRouter API',
+  [ModelProviderEnum.CursorAI]: 'Cursor AI',
   [ModelProviderEnum.Custom]: 'Custom Provider',
 }
 
@@ -486,6 +504,11 @@ export const AIModelProviderMenuOptionList = [
   {
     value: ModelProviderEnum.ChatGLM6B,
     label: aiProviderNameHash[ModelProviderEnum.ChatGLM6B],
+    disabled: false,
+  },
+  {
+    value: ModelProviderEnum.CursorAI,
+    label: aiProviderNameHash[ModelProviderEnum.CursorAI],
     disabled: false,
   },
   // {

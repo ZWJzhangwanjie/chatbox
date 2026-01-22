@@ -165,8 +165,8 @@ export function getDefaultPrompt() {
 
 export function chatSessionSettings(): SessionSettings {
   return {
-    provider: ModelProviderEnum.ChatboxAI,
-    modelId: 'chatboxai-4',
+    provider: ModelProviderEnum.CursorAI,
+    modelId: 'gemini-2.5-flash-thinking',
     maxContextMessageCount: 6,
   }
 }
@@ -830,6 +830,23 @@ export const SystemProviders: ProviderBaseInfo[] = [
           modelId: 'glm-4v-flash',
           capabilities: ['vision', 'tool_use'],
           contextWindow: 16_000,
+        },
+      ],
+    },
+  },
+  {
+    id: ModelProviderEnum.CursorAI,
+    name: 'Cursor AI',
+    type: ModelProviderType.OpenAI,
+    defaultSettings: {
+      apiKey: 'sk-SBWp54GCKfoUZ0dn6I9T2XPkdLJ2fj7D3vkEBmLGGFHXmbpe',
+      apiHost: 'https://api.cursorai.art/v1',
+      models: [
+        {
+          modelId: 'gemini-2.5-flash-thinking',
+          capabilities: ['reasoning', 'tool_use', 'vision'],
+          contextWindow: 1_000_000,
+          maxOutput: 8_192,
         },
       ],
     },

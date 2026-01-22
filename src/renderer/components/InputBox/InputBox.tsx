@@ -804,7 +804,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     />
                   </Tooltip>
 
-                  <ThinkModeToggle />
+                  {/* <ThinkModeToggle /> */}
 
                   {showRollbackThreadButton ? (
                     <Tooltip label={t('Back to Previous')} withArrow position="top-start">
@@ -872,7 +872,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     isMobile
                   />
 
-                  <ThinkModeToggle isMobile />
+                  {/* <ThinkModeToggle isMobile /> */}
 
                   <Menu
                     trigger={isSmallScreen ? 'click' : 'hover'}

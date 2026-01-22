@@ -61,10 +61,10 @@ import type { Memory } from 'src/shared/types'
 import { downloadCSV, exportMemories, exportMemoriesAsCSV, importMemoriesFromFile } from '@/utils/memoryExport'
 
 export const Route = createFileRoute('/settings/memory')({
-  component: MemorySettingsPage,
+  component: RouteComponent,
 })
 
-function MemorySettingsPage() {
+export function RouteComponent() {
   const { t } = useTranslation()
   const { setSettings, ...settings } = useSettingsStore((state) => state)
   const theme = useMantineTheme()

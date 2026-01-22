@@ -10,6 +10,7 @@ import {
   modelPersonalizationsAtom,
   personalizedModelsListAtom,
   updateModelPersonalizationAtom,
+  responseStylePresets,
 } from '@/stores/atoms/personalizationAtoms'
 
 /**
@@ -87,8 +88,6 @@ export function useModelPersonalizationEdit(provider: string, modelId: string) {
 
   const applyStyle = useCallback(
     (style: ResponseStyle) => {
-      // 导入预设风格
-      const { responseStylePresets } = require('@/stores/atoms/personalizationAtoms')
       const preset = responseStylePresets[style]
       if (!preset) return
 

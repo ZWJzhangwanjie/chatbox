@@ -135,6 +135,7 @@ export function isOpenAICompatible(providerId: string, _modelId: string) {
       ModelProviderEnum.Groq,
       ModelProviderEnum.DeepSeek,
       ModelProviderEnum.LMStudio,
+      ModelProviderEnum.CursorAI,
     ].includes(providerId as ModelProviderEnum) || providerId.startsWith('custom-provider-')
   )
 }

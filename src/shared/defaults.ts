@@ -173,19 +173,19 @@ export function chatSessionSettings(): SessionSettings {
 
 export function pictureSessionSettings(): SessionSettings {
   return {
-    provider: ModelProviderEnum.ChatboxAI,
-    modelId: 'DALL-E-3',
+    provider: ModelProviderEnum.OpenAI,
+    modelId: 'gpt-4o',
     imageGenerateNum: 1,
     dalleStyle: 'vivid',
   }
 }
 
 export const SystemProviders: ProviderBaseInfo[] = [
-  {
-    id: ModelProviderEnum.ChatboxAI,
-    name: 'Chatbox AI',
-    type: ModelProviderType.ChatboxAI,
-  },
+  // {
+  //   id: ModelProviderEnum.ChatboxAI,
+  //   name: 'Chatbox AI',
+  //   type: ModelProviderType.ChatboxAI,
+  // },
   {
     id: ModelProviderEnum.OpenAI,
     name: 'OpenAI',

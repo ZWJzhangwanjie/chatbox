@@ -733,8 +733,22 @@ export class AdController {
             const adapted = apiAd.adapted || {};
             const tracking = apiAd.tracking || {};
 
-            // 先转换内容格式
-            let content = this.convertAdaptedContentToAdContent(original.type, adapted);
+            // 调试日志：显示原始 adapted 数据
+            console.log(`[🔍 AdController] Converting ad ${original.id}:`, {
+              type: original.type,
+              adaptedKeys: Object.keys(adapted),
+              adapted: adapted,
+            });
+
+            // 先转换内容格式（传递 tracking 用于降级）
+            let content = this.convertAdaptedContentToAdContent(original.type, adapted, tracking);
+
+            // 调试日志：显示转换后的内容
+            console.log(`[✅ AdController] Converted content for ${original.id}:`, {
+              type: original.type,
+              contentKeys: Object.keys(content),
+              content: content,
+            });
 
             // 根据配置过滤内容（移除不需要显示的字段）
             content = this.filterAdContentByConfig(original.type, content);
@@ -742,7 +756,7 @@ export class AdController {
             if (this.config.debug) {
               console.log('[AdController] Filtered ad content:', {
                 type: original.type,
-                originalContent: this.convertAdaptedContentToAdContent(original.type, adapted),
+                originalContent: this.convertAdaptedContentToAdContent(original.type, adapted, tracking),
                 filteredContent: content,
                 config: {
                   showPrice: this.config.formats.actionCard.showPrice,
@@ -816,9 +830,12 @@ export class AdController {
   }
 
   /**
-   * 将 API 返回的 adapted 内容转换为我们的 AdContent 格式
+   * 将 API 返回的 adapted 内容转换为 SDK 组件期望的格式
+   *
+   * SDK 组件期望所有广告类型都使用 content.title 作为主要字段
+   * 参考文档: @ai-ad-network/frontend-sdk
    */
-  private convertAdaptedContentToAdContent(type: string, adapted: any): any {
+  private convertAdaptedContentToAdContent(type: string, adapted: any, tracking?: any): any {
     const content: any = {};
 
     switch (type) {
@@ -834,27 +851,27 @@ export class AdController {
         break;
 
       case 'suffix':
-        content.suffix_content = {
-          text: adapted.body,
-          link: adapted.link,
-        };
+        // SDK 的 SuffixAd 使用 content.title 生成后缀文本
+        content.title = adapted.body || adapted.text;
+        content.body = adapted.body;
+        content.link = adapted.link;
         break;
 
       case 'followup':
       case 'followUp':
-        content.followup_content = {
-          question: adapted.body,
-          link: adapted.link,
-        };
+        // SDK 的 FollowUpAd 使用 content.title 作为跟进问题
+        content.title = adapted.body || adapted.question;
+        content.body = adapted.body;
+        content.link = adapted.link;
         break;
 
       case 'source':
       case 'sponsoredSource':
-        content.source_content = {
-          title: adapted.title,
-          url: adapted.link || adapted.url,
-          favicon: adapted.favicon,
-        };
+        // SDK 的 SponsoredSourceAd 使用 content.title 作为来源标题
+        content.title = adapted.title;
+        content.link = adapted.link || adapted.url || tracking?.clickUrl;
+        content.favicon = adapted.favicon;
+        content.url = adapted.link || adapted.url || tracking?.clickUrl;
         break;
 
       case 'static':
@@ -868,6 +885,7 @@ export class AdController {
       case 'leadGen':
         content.title = adapted.title;
         content.body = adapted.body;
+        content.image = adapted.image?.url;
         // 降级处理：如果后端没有返回 fields，使用默认字段
         content.lead_gen_fields = adapted.fields && adapted.fields.length > 0
           ? adapted.fields

@@ -56,6 +56,7 @@ import { ThinkIndicator } from '@/packages/aiFeatures/thinkMode'
 // AI Ad Network - 广告集成
 import { MessageSuffixAd } from '@/packages/ads/components/MessageAdIntegration'
 import { LeadGenSlot } from '@/packages/ads/components/AdSlot'
+import { useAdConfig } from '@/packages/ads/hooks/useAdConfig'
 
 interface Props {
   id?: string
@@ -105,6 +106,9 @@ const _Message: FC<Props> = (props) => {
 
   const [previewArtifact, setPreviewArtifact] = useState(autoPreviewArtifacts)
   const [shouldThrowError, setShouldThrowError] = useState(false)
+
+  // AI Ad Network - 获取配置（必须在顶层调用）
+  const adConfig = useAdConfig()
 
   const contentLength = useMemo(() => {
     return getMessageText(msg).length
@@ -530,6 +534,7 @@ const _Message: FC<Props> = (props) => {
                 <LeadGenSlot
                   format="lead_gen"
                   placement="after_response"
+                  showDebug={adConfig.debug}
                   allAds={allAds}  // 传递 allAds，使用统一数据
                   context={{
                     currentMessage: {

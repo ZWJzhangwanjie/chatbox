@@ -14,7 +14,7 @@
 
 import { Box, Loader, Paper, Stack, Text, Alert } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
-import { lazy, Suspense, memo, useMemo } from 'react'
+import { lazy, Suspense, memo, useMemo, useState, useEffect } from 'react'
 import type { Ad, AdTriggerContext } from '../core/types'
 import { useAdData } from '../hooks/useAdData'
 import { useAdConfig } from '../hooks/useAdConfig'
@@ -33,8 +33,9 @@ const SDKSuffixAd = lazy(() =>
 const SDKFollowUpAd = lazy(() =>
   import('@ai-ad-network/frontend-sdk').then(m => ({ default: m.FollowUpAd }))
 )
+// 注意：SDK 导出的是 SponsoredSource 而不是 SponsoredSourceAd
 const SDKSponsoredSourceAd = lazy(() =>
-  import('@ai-ad-network/frontend-sdk').then(m => ({ default: m.SponsoredSourceAd }))
+  import('@ai-ad-network/frontend-sdk').then(m => ({ default: m.SponsoredSource }))
 )
 const SDKStaticAd = lazy(() =>
   import('@ai-ad-network/frontend-sdk').then(m => ({ default: m.StaticAd }))
@@ -109,6 +110,15 @@ interface SDKAdWrapperProps {
  * 添加额外的 className 以便应用 Chatbox 样式覆盖
  */
 const SDKAdWrapper = memo(({ ad, format, variant, onClick }: SDKAdWrapperProps) => {
+  // 调试日志
+  console.log(`[🎨 SDKAdWrapper] Rendering ${format} ad:`, {
+    adId: ad.id,
+    format,
+    variant,
+    contentKeys: Object.keys(ad.content || {}),
+    content: ad.content,
+  })
+
   // 添加点击处理
   const handleClick = () => {
     onClick?.(ad)
@@ -117,41 +127,104 @@ const SDKAdWrapper = memo(({ ad, format, variant, onClick }: SDKAdWrapperProps) 
   // 为每个广告组件创建一致的包装器
   const wrapperClassName = `ad-component-wrapper ad-component-wrapper-${format}`
 
+  // 错误边界状态
+  const [hasError, setHasError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | undefined>()
+
+  useEffect(() => {
+    // 验证必需的字段
+    if (!ad.content?.title) {
+      console.error(`[SDKAdWrapper] Missing required field 'title' for ${format} ad`, ad)
+      setHasError(true)
+      setErrorMessage(`Missing required field: content.title`)
+    } else {
+      // 成功渲染日志（带唯一标识 success_ad_format）
+      console.log(`[success_ad_format] ${format} ad rendered successfully`, {
+        ad_id: ad.id,
+        format,
+        title: ad.content.title,
+        hasError: false,
+      })
+
+      // source 格式特殊警告：如果系统没有资料引用功能，link 可能缺失
+      if (format === 'source' && !ad.content?.link && !ad.content?.url) {
+        console.warn(`[success_ad_format] ${format} ad has no link/url - this may be expected if the system doesn't have citation/reference data`, {
+          ad_id: ad.id,
+          title: ad.content.title,
+        })
+      }
+    }
+  }, [ad, format])
+
+  // 渲染错误状态
+  if (hasError) {
+    return (
+      <Alert variant="light" color="red" icon={<IconAlertCircle size={16} />}>
+        <Text size="sm">Ad rendering error: {errorMessage}</Text>
+      </Alert>
+    )
+  }
+
   // 根据 format 渲染对应的 SDK 组件，传递 variant
   const adComponent = (() => {
-    switch (format) {
-      case 'action_card':
-        return (
-          <SDKActionCardAd ad={ad} variant={variant as any} onClick={handleClick} />
-        )
+    try {
+      switch (format) {
+        case 'action_card':
+          return (
+            <Suspense fallback={<AdLoadingSkeleton />}>
+              <SDKActionCardAd ad={ad} variant={variant as any} onClick={handleClick} />
+            </Suspense>
+          )
 
-      case 'suffix':
-        return (
-          <SDKSuffixAd ad={ad} variant={variant as any} />
-        )
+        case 'suffix':
+          return (
+            <Suspense fallback={<AdLoadingSkeleton />}>
+              <SDKSuffixAd ad={ad} variant={variant as any} />
+            </Suspense>
+          )
 
-      case 'followup':
-        return (
-          <SDKFollowUpAd ad={ad} variant={variant as any} onClick={handleClick} />
-        )
+        case 'followup':
+          return (
+            <Suspense fallback={<AdLoadingSkeleton />}>
+              <SDKFollowUpAd ad={ad} variant={variant as any} onClick={handleClick} />
+            </Suspense>
+          )
 
-      case 'source':
-        return (
-          <SDKSponsoredSourceAd ad={ad} variant={variant as any} onClick={handleClick} />
-        )
+        case 'source':
+          return (
+            <Suspense fallback={<AdLoadingSkeleton />}>
+              <SDKSponsoredSourceAd ad={ad} variant={variant as any} onClick={handleClick} />
+            </Suspense>
+          )
 
-      case 'static':
-        return (
-          <SDKStaticAd ad={ad} />
-        )
+        case 'static':
+          return (
+            <Suspense fallback={<AdLoadingSkeleton />}>
+              <SDKStaticAd ad={ad} />
+            </Suspense>
+          )
 
-      case 'lead_gen':
-        return (
-          <SDKLeadGenAd ad={ad} />
-        )
+        case 'lead_gen':
+          return (
+            <Suspense fallback={<AdLoadingSkeleton />}>
+              <SDKLeadGenAd ad={ad} />
+            </Suspense>
+          )
 
-      default:
-        return <AdFallback ad={ad} />
+        default:
+          console.warn(`[SDKAdWrapper] Unknown format: ${format}, using fallback`)
+          return <AdFallback ad={ad} />
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      console.error(`[SDKAdWrapper] Error rendering ${format} ad:`, error)
+      setHasError(true)
+      setErrorMessage(message)
+      return (
+        <Alert variant="light" color="red">
+          <Text size="sm">Ad render failed: {message}</Text>
+        </Alert>
+      )
     }
   })()
 

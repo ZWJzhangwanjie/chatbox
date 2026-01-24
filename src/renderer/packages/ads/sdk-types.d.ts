@@ -193,7 +193,8 @@ declare module '@ai-ad-network/frontend-sdk' {
   export const ActionCardAd: (props: ActionCardAdProps) => ReactNode
   export const SuffixAd: (props: SuffixAdProps) => ReactNode
   export const FollowUpAd: (props: FollowUpAdProps) => ReactNode
-  export const SponsoredSourceAd: (props: SponsoredSourceAdProps) => ReactNode
+  // 注意：SDK 导出的是 SponsoredSource 而不是 SponsoredSourceAd
+  export const SponsoredSource: (props: SponsoredSourceAdProps) => ReactNode
   export const StaticAd: (props: StaticAdProps) => ReactNode
   export const LeadGenAd: (props: LeadGenAdProps) => ReactNode
 
@@ -207,7 +208,7 @@ declare module '@ai-ad-network/frontend-sdk' {
     ActionCardAd,
     SuffixAd,
     FollowUpAd,
-    SponsoredSourceAd,
+    SponsoredSource,
     StaticAd,
     LeadGenAd,
   }

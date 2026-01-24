@@ -10,7 +10,7 @@
 
 import { Box, Stack } from '@mantine/core'
 import { memo, useMemo } from 'react'
-import { useIsAdEnabled, useIsFormatEnabled } from '../hooks/useAdConfig'
+import { useIsAdEnabled, useIsFormatEnabled, useAdConfig } from '../hooks/useAdConfig'
 import { useMemoryForAds } from '../hooks/useMemoryForAds'
 import { SuffixSlot, SponsoredSourceSlot } from './AdSlot'
 import type { Message } from '../../../../shared/types'
@@ -48,8 +48,10 @@ interface MessageAdIntegrationProps {
  * 5. 消息有实际内容
  */
 export const MessageSuffixAd = memo<MessageAdIntegrationProps>(({ msg, sessionId, userQuery = '', allAds }) => {
+  // 所有 Hooks 必须在组件顶层调用，顺序必须一致
   const isAdEnabled = useIsAdEnabled()
   const isSuffixEnabled = useIsFormatEnabled('suffix')
+  const config = useAdConfig()  // 必须在这里调用，不能在后面的渲染中调用
   const { userData } = useMemoryForAds()
 
   // 调试日志：检查配置状态
@@ -122,7 +124,7 @@ export const MessageSuffixAd = memo<MessageAdIntegrationProps>(({ msg, sessionId
       <SuffixSlot
         format="suffix"
         placement="after_response"
-        showDebug={true}  // 启用调试以查看更多信息
+        showDebug={config.debug}
         context={adContext}
         allAds={allAds}  // 传递 allAds，SuffixSlot 会自动过滤
       />
@@ -153,6 +155,7 @@ export const MessageSponsoredSourceAd = memo<MessageAdIntegrationProps & {
 }>(({ msg, sessionId, sourceCount, adPosition = 1 }) => {
   const isAdEnabled = useIsAdEnabled()
   const isSourceEnabled = useIsFormatEnabled('source')
+  const config = useAdConfig()
 
   // 判断是否应该显示广告
   const shouldShow = useMemo(() => {
@@ -174,7 +177,7 @@ export const MessageSponsoredSourceAd = memo<MessageAdIntegrationProps & {
       <SponsoredSourceSlot
         format="source"
         placement="inline"
-        showDebug={false}
+        showDebug={config.debug}
       />
     </Box>
   )

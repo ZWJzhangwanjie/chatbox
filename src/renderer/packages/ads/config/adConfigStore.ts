@@ -81,7 +81,6 @@ export const useAdConfigStore = create<AdConfigState>()(
   subscribeWithSelector(
     persist(
       immer((set, get) => ({
-        // ========== 初始状态 ==========
         // 注意：不要在这里展开 defaultAdConfig，让 persist 从存储中恢复
         // 如果存储中没有数据，persist 会使用这个初始值
         enabled: true,
@@ -242,58 +241,88 @@ export const useAdConfigStore = create<AdConfigState>()(
         // ========== 持久化配置 ==========
         name: 'ad-config-storage',
 
-        // 使用项目的 storage 封装
+        // 🔥 关键修复：直接使用 localStorage 而不是 IndexedDB
+        // 原因：
+        // 1. localStorage 会触发 storage 事件，IndexedDB 不会
+        // 2. 跨标签页同步需要 storage 事件
+        // 3. 配置数据很小（<10KB），localStorage 完全够用
         storage: {
           getItem: async (key) => {
             try {
-              console.log('[AdConfigStore] Loading config from storage:', key);
-              const res = await storage.getItem<any>(key, null);
-              console.log('[AdConfigStore] Storage result:', res);
-              if (res && typeof res === 'object') {
-                // 直接返回状态对象
-                return JSON.stringify(res);
+              console.log('[AdConfigStore] Loading config from localStorage:', key);
+              let res = localStorage.getItem(key);
+
+              if (res === null) {
+                console.log('[AdConfigStore] No data in localStorage, trying IndexedDB migration...');
+                try {
+                  const oldData = await storage.getItem<any>(key, null);
+                  if (oldData && typeof oldData === 'object') {
+                    console.log('[AdConfigStore] Found data in IndexedDB, migrating to localStorage...');
+                    // 迁移到正确的格式：{ state, version }
+                    const migratedValue = { state: oldData, version: 1 };
+                    localStorage.setItem(key, JSON.stringify(migratedValue));
+                    res = JSON.stringify(migratedValue);
+                    console.log('[AdConfigStore] ✅ Migration completed');
+                  }
+                } catch (migrationError) {
+                  console.warn('[AdConfigStore] Migration from IndexedDB failed:', migrationError);
+                }
               }
-              return res ? JSON.stringify(res) : null;
+
+              if (res === null || res === undefined) {
+                console.warn('[AdConfigStore] No stored config found, will use defaults');
+                return null;
+              }
+
+              // 🔥 解析 Zustand persist 格式：{ state: AdConfig, version: number }
+              const parsed = JSON.parse(res);
+              console.log('[AdConfigStore] ✅ Parsed from localStorage:', {
+                hasState: !!parsed.state,
+                hasVersion: parsed.version !== undefined,
+                version: parsed.version,
+                suffixEnabled: parsed.state?.formats?.suffix?.enabled,
+              });
+
+              // 返回整个 parsed 对象（包含 state 和 version）
+              return parsed;
             } catch (error) {
-              console.error('[AdConfigStore] Failed to load config:', error);
+              console.error('[AdConfigStore] Failed to load config:', {
+                error: error instanceof Error ? error.message : String(error),
+                stack: error instanceof Error ? error.stack : undefined,
+                key: key,
+              });
               return null;
             }
           },
-          setItem: async (key, value) => {
+          setItem: (key, value) => {
             try {
-              console.log('[AdConfigStore] Saving config to storage:', key);
-              let stateToSave: AdConfig;
+              console.log('[AdConfigStore] Saving config to localStorage:', key);
 
-              // value 可能是字符串或对象
-              if (typeof value === 'string') {
-                // Zustand persist 传递的格式: { state: {...}, version: N }
-                const parsed = JSON.parse(value) as { state: AdConfig; version?: number };
-                stateToSave = parsed.state;
-              } else if (value && typeof value === 'object') {
-                // 如果已经是对象，直接使用
-                stateToSave = (value as any).state || value;
-              } else {
-                throw new Error('Invalid value type: ' + typeof value);
-              }
-
-              console.log('[AdConfigStore] Saving state:', {
-                enabled: stateToSave.enabled,
-                actionCardEnabled: stateToSave.formats?.actionCard?.enabled,
-                suffixEnabled: stateToSave.formats?.suffix?.enabled,
+              // 🔥 关键修复：Zustand persist 传递的 value 已经是正确的格式
+              // value 是 { state: AdConfig, version: number } 格式
+              // 我们需要直接存储这个格式，而不是只存储 state
+              console.log('[AdConfigStore] Value to save:', {
+                valueType: typeof value,
+                hasState: !!(value as any).state,
+                hasVersion: (value as any).version !== undefined,
+                suffixEnabled: (value as any).state?.formats?.suffix?.enabled,
               });
-              await storage.setItem(key, stateToSave);
-              console.log('[AdConfigStore] Config saved successfully');
+
+              // 直接存储 value（包含 state 和 version）
+              localStorage.setItem(key, JSON.stringify(value));
+              console.log('[AdConfigStore] ✅ Config saved to localStorage successfully');
             } catch (error) {
-              console.error('[AdConfigStore] Failed to save config:', error);
+              console.error('[AdConfigStore] ❌ Failed to save config:', error);
               console.error('[AdConfigStore] Value received:', value, typeof value);
             }
           },
-          removeItem: async (key) => {
+          removeItem: (key) => {
             try {
-              console.log('[AdConfigStore] Removing config from storage:', key);
-              await storage.removeItem(key);
+              console.log('[AdConfigStore] Removing config from localStorage:', key);
+              localStorage.removeItem(key);
+              console.log('[AdConfigStore] ✅ Config removed from localStorage');
             } catch (error) {
-              console.error('[AdConfigStore] Failed to remove config:', error);
+              console.error('[AdConfigStore] ❌ Failed to remove config:', error);
             }
           },
         },
@@ -319,6 +348,64 @@ export const useAdConfigStore = create<AdConfigState>()(
         //   api: state.api,
         //   // ...
         // }),
+
+        // 🔥 关键修复：使用深度合并策略，同时保留方法
+        // Zustand persist 默认使用浅合并，对于嵌套对象可能不完全替换
+        // 注意：不能直接返回新对象，否则会破坏 immer 的 Proxy 包装
+        merge: (persistedState: any, currentState: AdConfig) => {
+          console.log('[AdConfigStore] 🔧 Merge function called:', {
+            hasPersisted: !!persistedState,
+            persistedKeys: persistedState ? Object.keys(persistedState) : [],
+            persistedSuffix: persistedState?.formats?.suffix?.enabled,
+          });
+
+          // 如果没有持久化状态，返回当前状态
+          if (!persistedState) {
+            return currentState;
+          }
+
+          // 🔥 关键：不返回新对象，而是修改传入的 currentState
+          // 这样可以保留 immer 的 Proxy 包装和方法
+          // 只合并数据字段，不影响方法（函数）
+
+          // 合并顶层字段（不包括函数）
+          for (const key of Object.keys(persistedState)) {
+            const value = (persistedState as any)[key];
+            // 只覆盖非函数字段
+            if (typeof value !== 'function') {
+              (currentState as any)[key] = value;
+            }
+          }
+
+          // 深度合并嵌套对象
+          if (persistedState.api) {
+            Object.assign(currentState.api, persistedState.api);
+          }
+          if (persistedState.dataCollection) {
+            Object.assign(currentState.dataCollection, persistedState.dataCollection);
+          }
+          if (persistedState.formats) {
+            for (const formatKey of Object.keys(persistedState.formats)) {
+              if (currentState.formats[formatKey as keyof AdConfig['formats']] && persistedState.formats[formatKey]) {
+                Object.assign(
+                  currentState.formats[formatKey as keyof AdConfig['formats']],
+                  persistedState.formats[formatKey]
+                );
+              }
+            }
+          }
+          if (persistedState.privacy) {
+            Object.assign(currentState.privacy, persistedState.privacy);
+          }
+
+          console.log('[AdConfigStore] ✅ Merge completed (returned original state):', {
+            suffixEnabled: currentState.formats?.suffix?.enabled,
+            hasIsEnabled: typeof currentState.isEnabled === 'function',
+          });
+
+          // 返回原始状态对象（保留 Proxy 和方法）
+          return currentState;
+        },
       }
     )
   )
@@ -399,4 +486,70 @@ export function subscribeToEnabledChanges(
     (state) => state.enabled,
     (enabled) => listener(enabled)
   );
+}
+
+// ============================================================================
+// 跨标签页配置同步
+// ============================================================================
+
+/**
+ * 跨标签页配置同步监听器
+ *
+ * 🔥 修复：当其他标签页修改 ad-config-storage 时，当前标签页自动重新水合
+ *
+ * 工作原理：
+ * 1. 用户在 Tab A 修改配置 → storage.setItemNow() 写入 IndexedDB
+ * 2. IndexedDB 触发 'storage' 事件（仅在跨标签页时触发）
+ * 3. Tab B 检测到事件 → 重新水合 store → 显示最新配置
+ *
+ * 注意：'storage' 事件只在同源的其他标签页才会触发，同一页面不触发
+ */
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    // 只处理 ad-config-storage 的变化
+    if (event.key === 'ad-config-storage') {
+      console.log('[AdConfigStore] 🔔 Detected storage event:', {
+        key: event.key,
+        oldValue: event.oldValue ? 'exists' : 'null',
+        newValue: event.newValue ? 'exists' : 'null',
+        url: event.url,
+      });
+
+      // 如果新值为 null（被删除），也需要处理
+      if (event.newValue === null) {
+        console.warn('[AdConfigStore] Config was deleted in another tab, rehydrating with defaults');
+        useAdConfigStore.persist.rehydrate();
+        return;
+      }
+
+      // 解析新配置
+      try {
+        const parsed = JSON.parse(event.newValue);
+        const newConfig = parsed.state || parsed;
+
+        console.log('[AdConfigStore] 🔄 New config detected from another tab:', {
+          enabled: newConfig.enabled,
+          actionCardEnabled: newConfig.formats?.actionCard?.enabled,
+          suffixEnabled: newConfig.formats?.suffix?.enabled,
+          dataCollection: {
+            includeFullContext: newConfig.dataCollection?.includeFullContext,
+            includeMemory: newConfig.dataCollection?.includeMemory,
+            includeProfile: newConfig.dataCollection?.includeProfile,
+          },
+        });
+
+        // 触发重新水合，从 storage 重新加载配置
+        useAdConfigStore.persist.rehydrate();
+
+        console.log('[AdConfigStore] ✅ Cross-tab rehydration triggered');
+      } catch (error) {
+        console.error('[AdConfigStore] ❌ Failed to parse config from storage event:', {
+          error: error instanceof Error ? error.message : String(error),
+          rawValue: event.newValue?.substring(0, 200),
+        });
+      }
+    }
+  });
+
+  console.log('[AdConfigStore] 🔗 Cross-tab sync listener registered for key: ad-config-storage');
 }

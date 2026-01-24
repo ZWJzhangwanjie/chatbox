@@ -200,9 +200,20 @@ export interface AdRequestData {
 
 /**
  * 广告内容
+ *
+ * 注意：所有广告类型都使用 title 作为主要显示字段
+ * SDK 组件直接从 content.title 读取主要文本内容
+ *
+ * 各格式字段映射：
+ * - action_card: title, body, image, cta_text, price, rating, link
+ * - suffix: title (从 adapted.body 映射), body, link
+ * - followup: title (从 adapted.body 映射), body, link
+ * - source: title, link/url, favicon
+ * - static: title, body, image, link
+ * - lead_gen: title, body, image, lead_gen_fields
  */
 export interface AdContent {
-  /** 标题 */
+  /** 标题（所有格式通用） */
   title?: string;
   /** 描述文本 */
   body?: string;
@@ -216,22 +227,10 @@ export interface AdContent {
   rating?: number;
   /** 链接URL */
   link?: string;
-  /** 后缀内容（Suffix广告） */
-  suffix_content?: {
-    text: string;
-    link?: string;
-  };
-  /** 跟进问题内容（FollowUp广告） */
-  followup_content?: {
-    question: string;
-    link?: string;
-  };
-  /** 来源内容（SponsoredSource广告） */
-  source_content?: {
-    title: string;
-    url: string;
-    favicon?: string;
-  };
+  /** URL（用于 source 类型，与 link 互为别名） */
+  url?: string;
+  /** 网站图标（用于 source 类型） */
+  favicon?: string;
   /** 表单字段（LeadGen广告） */
   lead_gen_fields?: Array<{
     type: string;

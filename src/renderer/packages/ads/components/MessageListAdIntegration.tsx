@@ -11,7 +11,7 @@
 import { Box, Stack } from '@mantine/core'
 import { memo, useMemo } from 'react'
 import { useAdTrigger } from '../hooks/useAdTrigger'
-import { useIsFormatEnabled, useIsAdEnabled } from '../hooks/useAdConfig'
+import { useIsFormatEnabled, useIsAdEnabled, useAdConfig } from '../hooks/useAdConfig'
 import { useMemoryForAds } from '../hooks/useMemoryForAds'
 import { ActionCardSlot } from './AdSlot'
 import type { Message } from '../../../shared/types'
@@ -47,8 +47,10 @@ interface MessageListAdIntegrationProps {
  */
 export const MessageListActionCardAd = memo<MessageListAdIntegrationProps>(
   ({ messages, sessionId, messageIndex, allAds, children }) => {
+    // 所有 Hooks 必须在组件顶层调用，顺序必须一致
     const isAdEnabled = useIsAdEnabled()
     const isActionCardEnabled = useIsFormatEnabled('actionCard')
+    const config = useAdConfig()  // 必须在这里调用，不能在后面的渲染中调用
     const { shouldTrigger } = useAdTrigger()
     const { userData } = useMemoryForAds()
 
@@ -163,7 +165,7 @@ export const MessageListActionCardAd = memo<MessageListAdIntegrationProps>(
             <ActionCardSlot
               format="action_card"
               placement="between_messages"
-              showDebug={false}
+              showDebug={config.debug}
               allAds={allAds}  // 传递 allAds，ActionCardSlot 会自动过滤
             />
           </Box>

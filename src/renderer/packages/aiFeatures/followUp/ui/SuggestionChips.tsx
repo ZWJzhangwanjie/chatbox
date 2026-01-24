@@ -6,7 +6,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import type { FollowUpSuggestion } from '../../types';
 import styles from './SuggestionChips.module.css';
 // AI Ad Network - 广告集成
-import { useIsFormatEnabled, useIsAdEnabled } from '@/packages/ads/hooks/useAdConfig';
+import { useIsFormatEnabled, useIsAdEnabled, useAdConfig } from '@/packages/ads/hooks/useAdConfig';
 import { FollowUpSlot } from '@/packages/ads/components/AdSlot';
 
 // 注入关键帧动画
@@ -50,6 +50,7 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
   // AI Ad Network - 检查广告是否启用
   const isAdEnabled = useIsAdEnabled();
   const isFollowUpAdEnabled = useIsFormatEnabled('followup');
+  const config = useAdConfig();
 
   // 计算是否应该插入广告
   const { shouldInsertAd, adInsertPosition } = useMemo(() => {
@@ -201,7 +202,7 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
                         animation: `fadeInUp 0.3s ease-out ${groupIndex * 0.1 + (index + 1) * 0.05}s forwards`,
                       }}
                     >
-                      <FollowUpSlot format="followup" placement="inline_questions" allAds={allAds} />
+                      <FollowUpSlot format="followup" placement="inline_questions" showDebug={config.debug} allAds={allAds} />
                     </div>
                   )}
                 </React.Fragment>

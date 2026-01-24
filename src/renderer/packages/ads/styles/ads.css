@@ -1,0 +1,643 @@
+/**
+ * AI Ad Network - Chatbox 样式覆盖
+ *
+ * 使广告组件完全贴合 Chatbox 的设计风格
+ * 支持各种 variant 的不同展示效果
+ */
+
+/* ============================================================================
+   全局广告容器样式
+   ============================================================================ */
+
+.ad-slot {
+  /* 确保广告容器不会破坏布局 */
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* 广告组件包装器 */
+.ad-component-wrapper {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ============================================================================
+   FollowUp 广告样式（嵌入在追问建议中）
+   ============================================================================ */
+
+.ad-slot-followup {
+  margin: 8px 0;
+  padding: 0;
+}
+
+.ad-slot-followup .ad-component-wrapper {
+  margin: 4px 0;
+}
+
+/* ===== FollowUp SDK 组件通用样式覆盖 ===== */
+.ad-slot-followup .ad-component {
+  background: #ffffff !important;
+  color: #000000 !important;
+  transition: all 0.2s ease !important;
+}
+
+/* 针对特定 class 的下划线样式 - 紫色主题 */
+.ad-component.group.inline-flex.items-center.gap-2.text-sm,
+.ad-component[class*="ad-component"][class*="inline-flex"] {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* 下划线伪元素 - 紫色 */
+.ad-component.group.inline-flex.items-center.gap-2.text-sm::after,
+.ad-component[class*="ad-component"][class*="inline-flex"]::after {
+  background: #a855f7 !important; /* 紫色 */
+}
+
+/* Hover 状态 - 保持紫色 */
+.ad-component.group.inline-flex.items-center.gap-2.text-sm:hover,
+.ad-component[class*="ad-component"][class*="inline-flex"]:hover {
+  color: #a855f7 !important; /* 紫色 */
+}
+
+/* ===== FollowUp - bubble variant (气泡样式) ===== */
+.ad-slot-followup .ad-component-wrapper[data-variant="bubble"] > div,
+.ad-slot-followup .ad-component-wrapper[data-variant="bubble"] > * {
+  background: #ffffff !important;
+  border: 1px solid var(--chatbox-border-primary) !important;
+  border-radius: 18px !important;
+  padding: 10px 16px !important;
+  margin: 0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.2s ease !important;
+  display: inline-block !important;
+  max-width: 100% !important;
+}
+
+.ad-slot-followup .ad-component-wrapper[data-variant="bubble"] > *:hover {
+  background: var(--chatbox-background-primary-hover) !important;
+  border-color: #a855f7 !important;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.15) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ===== FollowUp - pill variant (药丸样式) ===== */
+.ad-slot-followup .ad-component-wrapper[data-variant="pill"] > div,
+.ad-slot-followup .ad-component-wrapper[data-variant="pill"] > * {
+  background: rgba(168, 85, 247, 0.1) !important; /* 紫色背景 */
+  border: 1px solid #a855f7 !important;
+  border-radius: 20px !important;
+  padding: 6px 14px !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.ad-slot-followup .ad-component-wrapper[data-variant="pill"] > *:hover {
+  background: rgba(168, 85, 247, 0.2) !important;
+  border-color: #9333ea !important;
+}
+
+/* ===== FollowUp - underline variant (下划线样式) ===== */
+.ad-slot-followup .ad-component-wrapper[data-variant="underline"] > div,
+.ad-slot-followup .ad-component-wrapper[data-variant="underline"] > * {
+  background: #ffffff !important;
+  border: none !important;
+  border-bottom: 1px solid #a855f7 !important; /* 紫色下划线 */
+  border-radius: 0 !important;
+  padding: 2px 4px !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+  display: inline !important;
+}
+
+.ad-slot-followup .ad-component-wrapper[data-variant="underline"] > *:hover {
+  background: rgba(168, 85, 247, 0.05) !important;
+  border-bottom-width: 2px !important;
+}
+
+/* ===== FollowUp 通用文字样式 ===== */
+.ad-slot-followup .ad-text-primary,
+.ad-slot-followup [class*="ad-text-primary"] {
+  color: var(--chatbox-tint-primary) !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+.ad-slot-followup .ad-text-secondary,
+.ad-slot-followup [class*="ad-text-secondary"] {
+  color: var(--chatbox-tint-secondary) !important;
+  font-size: 12px !important;
+}
+
+/* ===== FollowUp pill variant 特殊文字样式 ===== */
+.ad-slot-followup .ad-component-wrapper[data-variant="pill"] .ad-text-primary,
+.ad-slot-followup .ad-component-wrapper[data-variant="pill"] [class*="ad-text-primary"] {
+  color: #a855f7 !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+/* ===== FollowUp underline variant 特殊文字样式 ===== */
+.ad-slot-followup .ad-component-wrapper[data-variant="underline"] .ad-text-primary,
+.ad-slot-followup .ad-component-wrapper[data-variant="underline"] [class*="ad-text-primary"] {
+  color: #000000 !important; /* 黑色字体 */
+}
+
+/* 追问广告按钮 */
+.ad-slot-followup .ad-button,
+.ad-slot-followup button[class*="ad"] {
+  background: #a855f7 !important; /* 紫色 */
+  color: white !important;
+  border: none !important;
+  border-radius: var(--chatbox-radius-sm) !important;
+  padding: 6px 12px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+}
+
+.ad-slot-followup .ad-button:hover,
+.ad-slot-followup button[class*="ad"]:hover {
+  background: #9333ea !important; /* 深紫色 */
+}
+
+/* ============================================================================
+   LeadGen 广告样式（嵌入在消息中）
+   ============================================================================ */
+
+.ad-slot-lead_gen {
+  margin: 12px 0;
+}
+
+.ad-slot-lead_gen .ad-component-wrapper > div,
+.ad-slot-lead_gen .ad-component-wrapper > * {
+  background: var(--chatbox-background-secondary) !important;
+  border: 1px solid var(--chatbox-border-primary) !important;
+  border-left: 3px solid #a855f7 !important; /* 紫色边框 */
+  border-radius: var(--chatbox-radius-md) !important;
+  padding: 16px !important;
+  box-shadow: none !important;
+}
+
+.ad-slot-lead_gen .ad-component-wrapper > *:hover {
+  border-color: #a855f7 !important;
+}
+
+/* LeadGen 标题和文字 */
+.ad-slot-lead_gen .ad-text-primary,
+.ad-slot-lead_gen [class*="title"],
+.ad-slot-lead_gen h1, .ad-slot-lead_gen h2, .ad-slot-lead_gen h3,
+.ad-slot-lead_gen [class*="ad-text-primary"] {
+  color: var(--chatbox-tint-primary) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.ad-slot-lead_gen .ad-text-secondary,
+.ad-slot-lead_gen [class*="description"],
+.ad-slot-lead_gen [class*="body"],
+.ad-slot-lead_gen p,
+.ad-slot-lead_gen [class*="ad-text-secondary"] {
+  color: var(--chatbox-tint-secondary) !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+/* LeadGen 表单字段 */
+.ad-slot-lead_gen input[type="email"],
+.ad-slot-lead_gen input[type="text"],
+.ad-slot-lead_gen input[type="name"],
+.ad-slot-lead_gen [class*="input"] input {
+  background: var(--chatbox-background-primary) !important;
+  border: 1px solid var(--chatbox-border-primary) !important;
+  border-radius: var(--chatbox-radius-sm) !important;
+  padding: 8px 12px !important;
+  font-size: 13px !important;
+  color: var(--chatbox-tint-primary) !important;
+  transition: all 0.2s ease !important;
+}
+
+.ad-slot-lead_gen input:focus,
+.ad-slot-lead_gen [class*="input"] input:focus {
+  outline: none !important;
+  border-color: #a855f7 !important;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1) !important;
+}
+
+/* ============================================================================
+   ActionCard 广告样式（嵌入在消息列表中）
+   ============================================================================ */
+
+.ad-slot-action_card {
+  margin: 12px 0;
+}
+
+/* ===== ActionCard - horizontal variant (水平布局) ===== */
+.ad-slot-action_card .ad-component-wrapper[data-variant="horizontal"] > div,
+.ad-slot-action_card .ad-component-wrapper[data-variant="horizontal"] > * {
+  background: var(--chatbox-background-primary) !important;
+  border: 1px solid var(--chatbox-border-primary) !important;
+  border-radius: var(--chatbox-radius-lg) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+}
+
+.ad-slot-action_card .ad-component-wrapper[data-variant="horizontal"] > *:hover {
+  border-color: #a855f7 !important;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* ===== ActionCard - vertical variant (垂直布局) ===== */
+.ad-slot-action_card .ad-component-wrapper[data-variant="vertical"] > div,
+.ad-slot-action_card .ad-component-wrapper[data-variant="vertical"] > * {
+  background: var(--chatbox-background-primary) !important;
+  border: 1px solid var(--chatbox-border-primary) !important;
+  border-radius: var(--chatbox-radius-lg) !important;
+  padding: 16px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.2s ease !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+}
+
+.ad-slot-action_card .ad-component-wrapper[data-variant="vertical"] > *:hover {
+  border-color: #a855f7 !important;
+  box-shadow: 0 4px 12px rgba(168, 85, 247, 0.15) !important;
+  transform: translateY(-2px) !important;
+}
+
+/* ===== ActionCard - compact variant (紧凑布局) ===== */
+.ad-slot-action_card .ad-component-wrapper[data-variant="compact"] > div,
+.ad-slot-action_card .ad-component-wrapper[data-variant="compact"] > * {
+  background: var(--chatbox-background-primary) !important;
+  border: 1px solid var(--chatbox-border-primary) !important;
+  border-radius: var(--chatbox-radius-md) !important;
+  padding: 8px 12px !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+}
+
+.ad-slot-action_card .ad-component-wrapper[data-variant="compact"] > *:hover {
+  border-color: #a855f7 !important;
+  box-shadow: 0 2px 6px rgba(168, 85, 247, 0.12) !important;
+}
+
+/* ===== ActionCard 内容区域通用样式 ===== */
+.ad-slot-action_card .ad-text-primary,
+.ad-slot-action_card [class*="title"],
+.ad-slot-action_card h1, .ad-slot-action_card h2, .ad-slot-action_card h3,
+.ad-slot-action_card [class*="ad-text-primary"] {
+  color: var(--chatbox-tint-primary) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+}
+
+.ad-slot-action_card .ad-text-secondary,
+.ad-slot-action_card [class*="description"],
+.ad-slot-action_card [class*="body"],
+.ad-slot-action_card p,
+.ad-slot-action_card [class*="ad-text-secondary"] {
+  color: var(--chatbox-tint-secondary) !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+/* ===== ActionCard compact variant 特殊样式 ===== */
+.ad-slot-action_card .ad-component-wrapper[data-variant="compact"] .ad-text-primary,
+.ad-slot-action_card .ad-component-wrapper[data-variant="compact"] [class*="title"] {
+  font-size: 13px !important;
+}
+
+.ad-slot-action_card .ad-component-wrapper[data-variant="compact"] .ad-text-secondary,
+.ad-slot-action_card .ad-component-wrapper[data-variant="compact"] [class*="description"] {
+  font-size: 12px !important;
+}
+
+/* ============================================================================
+   Suffix 广告样式（嵌入在消息内容后）
+   ============================================================================ */
+
+/* ===== Suffix - inline variant (内联样式) ===== */
+.ad-slot-suffix .ad-component-wrapper[data-variant="inline"] {
+  display: inline-flex !important;
+}
+
+.ad-slot-suffix .ad-component-wrapper[data-variant="inline"] > div,
+.ad-slot-suffix .ad-component-wrapper[data-variant="inline"] > * {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 4px !important;
+}
+
+.ad-slot-suffix .ad-component-wrapper[data-variant="inline"] .ad-text-primary,
+.ad-slot-suffix .ad-component-wrapper[data-variant="inline"] a,
+.ad-slot-suffix .ad-component-wrapper[data-variant="inline"] [class*="ad-text-primary"] {
+  color: #a855f7 !important; /* 紫色 */
+  font-size: inherit !important;
+  text-decoration: none !important;
+  border-bottom: 1px dotted #a855f7 !important;
+}
+
+.ad-slot-suffix .ad-component-wrapper[data-variant="inline"] .ad-text-primary:hover,
+.ad-slot-suffix .ad-component-wrapper[data-variant="inline"] a:hover,
+.ad-slot-suffix .ad-component-wrapper[data-variant="inline"] [class*="ad-text-primary"]:hover {
+  color: #9333ea !important;
+  border-bottom-style: solid !important;
+}
+
+/* ===== Suffix - block variant (区块样式) ===== */
+.ad-slot-suffix .ad-component-wrapper[data-variant="block"] {
+  display: block !important;
+  margin: 8px 0 !important;
+}
+
+.ad-slot-suffix .ad-component-wrapper[data-variant="block"] > div,
+.ad-slot-suffix .ad-component-wrapper[data-variant="block"] > * {
+  display: block !important;
+  background: var(--chatbox-background-secondary) !important;
+  border: 1px solid var(--chatbox-border-primary) !important;
+  border-left: 2px solid #a855f7 !important; /* 紫色边框 */
+  border-radius: var(--chatbox-radius-sm) !important;
+  padding: 8px 12px !important;
+  margin: 0 !important;
+}
+
+.ad-slot-suffix .ad-component-wrapper[data-variant="block"] .ad-text-primary,
+.ad-slot-suffix .ad-component-wrapper[data-variant="block"] a,
+.ad-slot-suffix .ad-component-wrapper[data-variant="block"] [class*="ad-text-primary"] {
+  color: #a855f7 !important;
+  font-size: 13px !important;
+  text-decoration: none !important;
+  border-bottom: none !important;
+}
+
+/* ===== Suffix - minimal variant (极简样式) ===== */
+.ad-slot-suffix .ad-component-wrapper[data-variant="minimal"] {
+  display: inline !important;
+}
+
+.ad-slot-suffix .ad-component-wrapper[data-variant="minimal"] > div,
+.ad-slot-suffix .ad-component-wrapper[data-variant="minimal"] > * {
+  display: inline !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 2px !important;
+}
+
+.ad-slot-suffix .ad-component-wrapper[data-variant="minimal"] .ad-text-primary,
+.ad-slot-suffix .ad-component-wrapper[data-variant="minimal"] a,
+.ad-slot-suffix .ad-component-wrapper[data-variant="minimal"] [class*="ad-text-primary"] {
+  color: var(--chatbox-tint-tertiary) !important;
+  font-size: inherit !important;
+  text-decoration: none !important;
+  border-bottom: none !important;
+  opacity: 0.8 !important;
+}
+
+.ad-slot-suffix .ad-component-wrapper[data-variant="minimal"] .ad-text-primary:hover,
+.ad-slot-suffix .ad-component-wrapper[data-variant="minimal"] a:hover,
+.ad-slot-suffix .ad-component-wrapper[data-variant="minimal"] [class*="ad-text-primary"]:hover {
+  color: #a855f7 !important;
+  opacity: 1 !important;
+}
+
+/* ============================================================================
+   Sponsored Source 广告样式
+   ============================================================================ */
+
+.ad-slot-source {
+  margin: 8px 0;
+}
+
+/* ===== Source - card variant (卡片样式) ===== */
+.ad-slot-source .ad-component-wrapper[data-variant="card"] > div,
+.ad-slot-source .ad-component-wrapper[data-variant="card"] > * {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  background: var(--chatbox-background-secondary) !important;
+  border: 1px solid var(--chatbox-border-primary) !important;
+  border-radius: var(--chatbox-radius-md) !important;
+  padding: 12px 16px !important;
+  transition: all 0.2s ease !important;
+}
+
+.ad-slot-source .ad-component-wrapper[data-variant="card"] > *:hover {
+  background: var(--chatbox-background-primary-hover) !important;
+  border-color: #a855f7 !important;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.1) !important;
+}
+
+/* ===== Source - minimal variant (极简样式) ===== */
+.ad-slot-source .ad-component-wrapper[data-variant="minimal"] > div,
+.ad-slot-source .ad-component-wrapper[data-variant="minimal"] > * {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px dotted var(--chatbox-border-primary) !important;
+  border-radius: 0 !important;
+  padding: 2px 4px !important;
+  margin: 0 4px !important;
+}
+
+.ad-slot-source .ad-component-wrapper[data-variant="minimal"] > *:hover {
+  background: var(--chatbox-background-secondary) !important;
+  border-bottom-style: solid !important;
+}
+
+/* ===== Source - list_item variant (列表项样式) ===== */
+.ad-slot-source .ad-component-wrapper[data-variant="list_item"] > div,
+.ad-slot-source .ad-component-wrapper[data-variant="list_item"] > * {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  border-left: 2px solid #a855f7 !important; /* 紫色边框 */
+  border-radius: 0 !important;
+  padding: 6px 8px 6px 12px !important;
+  margin: 2px 0 !important;
+}
+
+.ad-slot-source .ad-component-wrapper[data-variant="list_item"] > *:hover {
+  background: var(--chatbox-background-secondary) !important;
+}
+
+/* ===== Source 通用文字样式 ===== */
+.ad-slot-source .ad-text-primary,
+.ad-slot-source [class*="title"],
+.ad-slot-source [class*="ad-text-primary"] {
+  color: var(--chatbox-tint-primary) !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+}
+
+/* ===== Source minimal variant 特殊样式 ===== */
+.ad-slot-source .ad-component-wrapper[data-variant="minimal"] .ad-text-primary,
+.ad-slot-source .ad-component-wrapper[data-variant="minimal"] [class*="title"] {
+  color: var(--chatbox-tint-secondary) !important;
+  font-size: 12px !important;
+}
+
+/* ============================================================================
+   广告标签样式（ Sponsored 标签）
+   ============================================================================ */
+
+.ad-sponsored-badge,
+[class*="sponsored"],
+[class*="badge"] {
+  background: var(--chatbox-background-secondary) !important;
+  color: var(--chatbox-tint-tertiary) !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  padding: 2px 6px !important;
+  border-radius: var(--chatbox-radius-xs) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+/* ============================================================================
+   响应式调整
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .ad-slot-followup .ad-component-wrapper > * {
+    padding: 10px 12px !important;
+  }
+
+  .ad-slot-lead_gen .ad-component-wrapper > * {
+    padding: 12px !important;
+  }
+
+  .ad-slot-action_card .ad-component-wrapper > * {
+    border-radius: var(--chatbox-radius-md) !important;
+  }
+
+  /* Compact variant 在移动端调整 */
+  .ad-slot-action_card .ad-component-wrapper[data-variant="compact"] > * {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+}
+
+/* ============================================================================
+   Dark mode 特定样式
+   ============================================================================ */
+
+[data-mantine-color-scheme="dark"] .ad-slot-followup .ad-component-wrapper > *,
+[data-mantine-color-scheme="dark"] .ad-slot-lead_gen .ad-component-wrapper > *,
+[data-mantine-color-scheme="dark"] .ad-slot-source .ad-component-wrapper > * {
+  background: var(--chatbox-background-secondary) !important;
+  border-color: var(--chatbox-border-primary) !important;
+}
+
+[data-mantine-color-scheme="dark"] .ad-slot-action_card .ad-component-wrapper > * {
+  background: var(--chatbox-background-primary) !important;
+  border-color: var(--chatbox-border-primary) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+[data-mantine-color-scheme="dark"] .ad-slot-followup .ad-component-wrapper[data-variant="bubble"] > *,
+[data-mantine-color-scheme="dark"] .ad-slot-followup .ad-component-wrapper[data-variant="pill"] > * {
+  background: var(--chatbox-background-primary) !important;
+}
+
+[data-mantine-color-scheme="dark"] .ad-slot-source .ad-component-wrapper[data-variant="minimal"] > * {
+  border-bottom-color: var(--chatbox-border-secondary) !important;
+}
+
+/* Dark mode 下 underline variant 保持白色背景 */
+[data-mantine-color-scheme="dark"] .ad-slot-followup .ad-component-wrapper[data-variant="underline"] > * {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Dark mode 下特定 class 保持白色背景 */
+[data-mantine-color-scheme="dark"] .ad-component.group.inline-flex.items-center.gap-2.text-sm,
+[data-mantine-color-scheme="dark"] .ad-component[class*="ad-component"][class*="inline-flex"] {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* ============================================================================
+   嵌入到文档/代码块内的特殊处理
+   ============================================================================ */
+
+/* 当广告嵌入在代码块、表格等元素内时，使用更紧凑的样式 */
+.markdown pre .ad-slot,
+.markdown table .ad-slot,
+.markdown blockquote .ad-slot {
+  /* 在文档内容中的广告不显示或使用极简样式 */
+  display: none;
+}
+
+/* 或使用内联样式显示 */
+.markdown p .ad-slot-suffix {
+  display: inline;
+}
+
+/* ============================================================================
+   加载状态和错误状态
+   ============================================================================ */
+
+.ad-slot-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: var(--chatbox-background-secondary);
+  border-radius: var(--chatbox-radius-md);
+  color: var(--chatbox-tint-tertiary);
+  font-size: 13px;
+}
+
+.ad-slot-error {
+  padding: 12px 16px;
+  background: rgba(250, 82, 82, 0.1);
+  border: 1px solid var(--chatbox-border-error);
+  border-radius: var(--chatbox-radius-md);
+  color: var(--chatbox-tint-error);
+  font-size: 13px;
+}
+
+/* ============================================================================
+   动画效果（与 Chatbox 保持一致）
+   ============================================================================ */
+
+@keyframes ad-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ad-component-wrapper > * {
+  animation: ad-fade-in 0.2s ease-out !important;
+}

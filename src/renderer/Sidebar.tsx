@@ -27,6 +27,9 @@ import { createEmpty } from './stores/sessionActions'
 import { useLanguage } from './stores/settingsStore'
 import { useUIStore } from './stores/uiStore'
 import { CHATBOX_BUILD_PLATFORM } from './variables'
+// AI Ad Network - 广告集成
+import { useIsFormatEnabled, useIsAdEnabled } from './packages/ads/hooks/useAdConfig'
+import { StaticSlot } from './packages/ads/components/AdSlot'
 
 export default function Sidebar() {
   const { t } = useTranslation()
@@ -36,6 +39,10 @@ export default function Sidebar() {
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth)
+
+  // AI Ad Network - 检查 Static 广告是否启用
+  const isAdEnabled = useIsAdEnabled()
+  const isStaticAdEnabled = useIsFormatEnabled('static')
 
   const sessionListViewportRef = useRef<HTMLDivElement>(null)
 
@@ -154,6 +161,13 @@ export default function Sidebar() {
         </Flex>
 
         <SessionList sessionListViewportRef={sessionListViewportRef} />
+
+        {/* AI Ad Network - Static 广告 (在侧边栏中部) */}
+        {isAdEnabled && isStaticAdEnabled && (
+          <Box px="md" py="sm">
+            <StaticSlot format="static" placement="sidebar" />
+          </Box>
+        )}
 
         <Stack gap={0} px="xs" pb="xs">
           <Divider />

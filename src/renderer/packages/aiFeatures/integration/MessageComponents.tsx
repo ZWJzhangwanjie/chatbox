@@ -15,6 +15,8 @@ interface AIFeaturesMessageProps {
   followUpSuggestions: FollowUpSuggestion[];
   recommendations: Recommendation[];
   sessionId: string;
+  /** AI Ad Network - 所有格式的广告数据 */
+  allAds?: import('@/packages/ads/core/types').Ad[];
 }
 
 /**
@@ -23,7 +25,7 @@ interface AIFeaturesMessageProps {
  * 注意：思考过程已移至消息内容内显示，不再在此处显示
  */
 export const AIFeaturesMessage = memo<AIFeaturesMessageProps>(
-  ({ followUpSuggestions, recommendations, sessionId }) => {
+  ({ followUpSuggestions, recommendations, sessionId, allAds }) => {
     // 如果没有任何数据，不渲染任何内容
     const hasAnyData =
       followUpSuggestions.length > 0 ||
@@ -53,6 +55,7 @@ export const AIFeaturesMessage = memo<AIFeaturesMessageProps>(
             <SuggestionChips
               suggestions={followUpSuggestions}
               onSelect={(suggestion) => handleSuggestionSelect(suggestion, sessionId)}
+              allAds={allAds}
             />
           </div>
         )}

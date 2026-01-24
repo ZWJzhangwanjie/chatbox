@@ -1,5 +1,6 @@
 import { getDefaultStore } from 'jotai'
 import { ModelProviderEnum } from 'src/shared/types'
+import { SystemProviders } from 'src/shared/defaults'
 import * as atoms from './atoms'
 import { settingsStore } from './settingsStore'
 
@@ -8,6 +9,12 @@ export function needEditSetting() {
 
   // 激活了chatbox ai
   if (settings.licenseKey) {
+    return false
+  }
+
+  // 检查是否有任何系统默认provider配置了apiKey（如CursorAI）
+  const hasDefaultApiKeyProvider = SystemProviders.some((p) => p.defaultSettings?.apiKey)
+  if (hasDefaultApiKeyProvider) {
     return false
   }
 

@@ -2,9 +2,12 @@
  * 主动推荐 - UI组件
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Recommendation } from '../../types';
 import styles from './RecommendationPanel.module.css';
+// AI Ad Network - 广告集成
+import { useIsFormatEnabled, useIsAdEnabled } from '@/packages/ads/hooks/useAdConfig';
+import { SponsoredSourceSlot } from '@/packages/ads/components/AdSlot';
 
 interface RecommendationPanelProps {
   recommendations: Recommendation[];
@@ -19,9 +22,25 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<Recommendation['type'] | 'all'>('all');
 
-  const grouped = groupByType(recommendations);
+  // AI Ad Network - 检查广告是否启用
+  const isAdEnabled = useIsAdEnabled();
+  const isSourceAdEnabled = useIsFormatEnabled('source');
+
+  // 计算是否应该插入广告，以及插入位置
+  const { displayRecommendations, adInsertIndex } = useMemo(() => {
+    // 如果广告未启用或没有足够的推荐，直接返回原列表
+    if (!isAdEnabled || !isSourceAdEnabled || recommendations.length < 2) {
+      return { displayRecommendations: recommendations, adInsertIndex: -1 };
+    }
+
+    // 在第1个推荐后插入广告
+    const insertIndex = Math.min(1, recommendations.length - 1);
+    return { displayRecommendations: recommendations, adInsertIndex: insertIndex };
+  }, [recommendations, isAdEnabled, isSourceAdEnabled]);
+
+  const grouped = groupByType(displayRecommendations);
   const filtered = activeTab === 'all'
-    ? recommendations
+    ? displayRecommendations
     : grouped[activeTab] || [];
 
   if (filtered.length === 0) {
@@ -64,12 +83,22 @@ export const RecommendationPanel: React.FC<RecommendationPanelProps> = ({
 
       {/* 推荐列表 */}
       <div className={styles.list}>
-        {filtered.map((rec) => (
-          <RecommendationCard
-            key={rec.id}
-            recommendation={rec}
-            onSelect={onSelect}
-          />
+        {filtered.map((rec, index) => (
+          <React.Fragment key={rec.id}>
+            <RecommendationCard
+              recommendation={rec}
+              onSelect={onSelect}
+            />
+
+            {/* AI Ad Network - 在第1个推荐后插入 SponsoredSource 广告 */}
+            {index === adInsertIndex && isAdEnabled && isSourceAdEnabled && (
+              <SponsoredSourceSlot
+                format="source"
+                placement="inline"
+                key="ad-sponsored-source"
+              />
+            )}
+          </React.Fragment>
         ))}
       </div>
     </div>

@@ -53,6 +53,12 @@ import Message from './Message'
 import MessageNavigation, { ScrollToBottomButton } from './MessageNavigation'
 import { ScalableIcon } from './ScalableIcon'
 import { AIFeaturesMessage } from '@/packages/aiFeatures/integration/MessageComponents'
+// AI Ad Network - 广告集成
+import { MessageListActionCardAd } from '@/packages/ads/components/MessageListAdIntegration'
+import { useAds } from '@/packages/ads/hooks/useAds'
+import { useMemoryForAds } from '@/packages/ads/hooks/useMemoryForAds'
+import { getMessageText } from '../../shared/utils/message'
+import type { AdTriggerContext } from '@/packages/ads/core/types'
 
 const sessionScrollPositionCache = new Map<string, StateSnapshot>()
 
@@ -77,6 +83,73 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
     [currentSession]
   )
   const currentMessageList = useMemo(() => getAllMessageList(currentSession), [currentSession])
+
+  // ========== AI Ad Network - 统一广告数据管理 ==========
+  // 获取用户记忆数据
+  const { userData } = useMemoryForAds()
+
+  // 构建广告触发上下文（用于获取所有格式的广告）
+  const adContext = useMemo<AdTriggerContext | undefined>(() => {
+    if (!currentMessageList || currentMessageList.length === 0) {
+      return undefined
+    }
+
+    // 使用最后一条消息构建 context
+    const lastMessage = currentMessageList[currentMessageList.length - 1]
+
+    // ⚠️ 关键修复：只有当最后一条是 assistant 消息且不在生成中时才触发
+    // 这确保了：
+    // 1. LLM 已经完成回复
+    // 2. response 有完整内容
+    // 3. 不会在用户刚发送消息后就触发（此时最后一条是 user 消息）
+    if (lastMessage?.role !== 'assistant' || lastMessage?.generating) {
+      return undefined
+    }
+
+    // 向前查找最近的一条用户消息作为 query
+    let userQuery = ''
+    for (let i = currentMessageList.length - 1; i >= 0; i--) {
+      const msg = currentMessageList[i]
+      if (msg?.role === 'user') {
+        userQuery = getMessageText(msg) || ''
+        break
+      }
+    }
+
+    const assistantResponse = getMessageText(lastMessage) || ''
+
+    // 只有当有有效的 query 和 response 时才返回 context
+    if (!userQuery || !assistantResponse) {
+      return undefined
+    }
+
+    // 构建对话历史消息数组（用于高级数据收集）
+    const messages = currentMessageList.map(msg => ({
+      role: msg.role,
+      content: getMessageText(msg) || '',
+    }))
+
+    return {
+      currentMessage: {
+        query: userQuery,
+        response: assistantResponse,
+        timestamp: lastMessage?.createdAt || Date.now(),
+        model: lastMessage?.model || 'unknown',
+        provider: lastMessage?.model?.split('/')?.[0] || 'chatbox',
+        isStreaming: false, // 已经确保不正在生成
+      },
+      conversationContext: {
+        sessionId: currentSession.id,
+        messageCount: currentMessageList.length,
+        messages: messages,  // 添加对话历史
+      },
+      userData: userData || undefined,  // 添加用户记忆数据
+    }
+  }, [currentSession, currentMessageList, userData])
+
+  // 统一获取所有广告数据（每个 session 只请求一次）
+  const { allAds } = useAds(adContext)
+  // ========== AI Ad Network - 结束 ==========
 
   // 稳定最后一条消息的引用，避免 AIFeaturesMessage 无限重渲染
   const lastMessage = useMemo(() => {
@@ -302,6 +375,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                       }
                       assistantAvatarKey={currentSession.assistantAvatarKey}
                       sessionPicUrl={currentSession.picUrl}
+                      allAds={allAds}
                     />
                   </ErrorBoundary>
                   {currentSession.messageForksHash?.[msg.id] &&
@@ -323,9 +397,23 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                         sessionId={currentSession.id}
                         followUpSuggestions={displayFollowUpSuggestions}
                         recommendations={displayRecommendations}
+                        allAds={allAds}
                       />
                     </ErrorBoundary>
                   )}
+
+                  {/* AI Ad Network - ActionCard 广告 (在消息间插入) */}
+                  <ErrorBoundary name={`ad-${msg.id}`}>
+                    <MessageListActionCardAd
+                      messages={currentMessageList}
+                      sessionId={currentSession.id}
+                      messageIndex={index}
+                      allAds={allAds}
+                    >
+                      {/* 广告组件会根据配置自动显示，这里不需要渲染任何内容 */}
+                      <></>
+                    </MessageListActionCardAd>
+                  </ErrorBoundary>
                 </Stack>
               )
             }}

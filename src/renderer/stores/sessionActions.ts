@@ -117,17 +117,11 @@ async function triggerMemoryExtraction(sessionId: string) {
       return
     }
 
-    console.log('[Memory] Triggering memory extraction for session:', sessionId)
-
     // 异步提取记忆（不阻塞主流程）
     platform
       .extractMemoriesFromSession(sessionId, session.messages)
       .then((result) => {
-        console.log('[Memory] Extraction completed:', {
-          sessionId,
-          extractedCount: result.memories.length,
-          confidence: result.confidence,
-        })
+        // Memory extraction completed
       })
       .catch((error) => {
         console.error('[Memory] Extraction failed:', error)
@@ -164,17 +158,12 @@ async function injectMemories(session: Session, userQuery?: string): Promise<Mes
       return session.messages
     }
 
-    console.log('[Memory] Retrieving memories for query:', queryText)
-
     // 获取相关记忆
     const memories = await platform.getMemoriesForContext(queryText, 5, 500)
 
     if (memories.length === 0) {
-      console.log('[Memory] No relevant memories found')
       return session.messages
     }
-
-    console.log(`[Memory] Found ${memories.length} relevant memories`)
 
     // 导入记忆注入函数
     const { injectMemoriesIntoMessages } = await import('../packages/prompts')
@@ -295,7 +284,6 @@ export function switchCurrentSession(sessionId: string) {
 }
 
 export async function reorderSessions(oldIndex: number, newIndex: number) {
-  console.debug('sessionActions', 'reorderSessions', oldIndex, newIndex)
   await chatStore.updateSessionList((sessions) => {
     if (!sessions) {
       throw new Error('Session list not found')
@@ -1834,18 +1822,11 @@ async function triggerAIFeaturesAfterResponse(
 ) {
   const { followUpEnabled, recommendationEnabled, setSessionFeatures } = useAIFeaturesStore.getState();
 
-  console.log('[AI Features] Triggering with settings:', {
-    followUpEnabled,
-    recommendationEnabled,
-    messagesCount: session.messages.length
-  });
-
   // 强制禁用推荐功能（暂时）
   const enableFollowUp = followUpEnabled;
   const enableRecommendation = false; // 强制禁用
 
   if (!enableFollowUp && !enableRecommendation) {
-    console.log('[AI Features] Both features disabled, skipping');
     return;
   }
 
@@ -1868,8 +1849,6 @@ async function triggerAIFeaturesAfterResponse(
       thinkMode: useAIFeaturesStore.getState().thinkModeConfig,
     });
 
-    console.log('[AI Features] Calling coordinator.handleAfterResponse...');
-
     const results = await coordinator.handleAfterResponse(
       aiMessage,
       session.messages,
@@ -1880,13 +1859,6 @@ async function triggerAIFeaturesAfterResponse(
       sessionSettings
     );
 
-    console.log('[AI Features] Results:', {
-      followUpCount: results.followUpSuggestions.length,
-      recommendationCount: results.recommendations.length,
-      followUpSuggestions: results.followUpSuggestions,
-      recommendations: results.recommendations
-    });
-
     // 存储结果到 aiFeaturesStore
     if (results.followUpSuggestions.length > 0 || results.recommendations.length > 0) {
       setSessionFeatures(sessionId, {
@@ -1894,9 +1866,6 @@ async function triggerAIFeaturesAfterResponse(
         recommendations: results.recommendations,
         timestamp: Date.now(),
       });
-      console.log('[AI Features] Stored results for session:', sessionId);
-    } else {
-      console.log('[AI Features] No suggestions or recommendations generated');
     }
   } catch (error) {
     console.error("[AI Features] Trigger failed:", error);
@@ -2042,11 +2011,7 @@ export async function executeThinkModeForMessage(
 
     return true;
   } catch (error) {
-    console.error('[🧠 THINK MODE EXECUTE] ❌ Error:', error);
-    console.error('[🧠 THINK MODE EXECUTE] Error details:', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
+    console.error('[🧠 THINK MODE EXECUTE] Error:', error);
 
     // 如果出错，更新消息显示错误
     if (answerMsg) {

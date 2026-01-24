@@ -31,6 +31,7 @@ import { SettingsRoot } from '@/routes/settings/route'
 import { RouteComponent as SettingsWebSearchRouteComponent } from '@/routes/settings/web-search'
 import { RouteComponent as SettingsMemoryRouteComponent } from '@/routes/settings/memory'
 import { RouteComponent as SettingsModelPersonalizationRouteComponent } from '@/routes/settings/model-personalization'
+import { RouteComponent as SettingsAdsRouteComponent } from '@/routes/settings/ads'
 
 export type SettingsModalProps = {}
 
@@ -163,6 +164,12 @@ const SettingsMemoryRoute = createRoute({
   getParentRoute: () => RootRoute,
 })
 
+const SettingsAdsRoute = createRoute({
+  component: SettingsAdsRouteComponent,
+  path: '/settings/ads',
+  getParentRoute: () => RootRoute,
+})
+
 const SettingsMcpRoute = createRoute({
   component: SettingsMcpRouteComponent,
   path: '/settings/mcp',
@@ -224,6 +231,7 @@ const routeTree = RootRoute.addChildren([
   SettingsWebSearchRoute,
   SettingsModelPersonalizationRoute,
   SettingsMemoryRoute,
+  SettingsAdsRoute,
   SettingsMcpRoute,
   SettingsKnowledgeBaseRoute,
   SettingsHotkeysRoute,

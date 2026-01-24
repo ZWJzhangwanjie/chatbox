@@ -63,7 +63,6 @@ export function useMessagesTokenCountQuery(
             if (m.tokenCountMap) {
               return { id: m.id, tokenCountMap: m.tokenCountMap, reused: true }
             } else {
-              console.debug('useTokenCount', 'count token for message', m.id)
               return {
                 id: m.id,
                 tokenCountMap: {
@@ -128,7 +127,6 @@ export function useTokenCount(
       setCurrentInputTokens(0)
       return
     } else {
-      console.debug('useTokenCount', 'calculate current input tokens')
       setCurrentInputTokens(
         estimateTokensFromMessages([debouncedConstructedMessage], 'input', {
           modelId: model?.modelId || '',

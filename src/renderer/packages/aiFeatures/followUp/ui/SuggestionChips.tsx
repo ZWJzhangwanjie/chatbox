@@ -2,9 +2,12 @@
  * 智能追问 - UI组件
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { FollowUpSuggestion } from '../../types';
 import styles from './SuggestionChips.module.css';
+// AI Ad Network - 广告集成
+import { useIsFormatEnabled, useIsAdEnabled } from '@/packages/ads/hooks/useAdConfig';
+import { FollowUpSlot } from '@/packages/ads/components/AdSlot';
 
 // 注入关键帧动画
 const styleSheet = document.createElement('style');
@@ -30,6 +33,8 @@ interface SuggestionChipsProps {
   onSelect: (suggestion: FollowUpSuggestion) => void;
   onCustomFollowUp?: () => void;
   loading?: boolean;
+  /** AI Ad Network - 所有格式的广告数据 */
+  allAds?: import('@/packages/ads/core/types').Ad[];
 }
 
 export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
@@ -37,9 +42,26 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
   onSelect,
   onCustomFollowUp,
   loading = false,
+  allAds,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+
+  // AI Ad Network - 检查广告是否启用
+  const isAdEnabled = useIsAdEnabled();
+  const isFollowUpAdEnabled = useIsFormatEnabled('followup');
+
+  // 计算是否应该插入广告
+  const { shouldInsertAd, adInsertPosition } = useMemo(() => {
+    // 如果广告未启用或没有足够的建议，直接返回
+    if (!isAdEnabled || !isFollowUpAdEnabled || suggestions.length < 2) {
+      return { shouldInsertAd: false, adInsertPosition: -1 };
+    }
+
+    // 根据建议数量决定插入位置（在第2条建议后插入）
+    const position = Math.min(2, suggestions.length - 1);
+    return { shouldInsertAd: true, adInsertPosition: position };
+  }, [suggestions, isAdEnabled, isFollowUpAdEnabled]);
 
   // 组件挂载后延迟显示，实现淡入效果
   useEffect(() => {
@@ -53,6 +75,10 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
     loading,
     suggestions,
     isVisible,
+    adEnabled: isAdEnabled,
+    followUpAdEnabled: isFollowUpAdEnabled,
+    shouldInsertAd,
+    adInsertPosition,
   });
 
   if (loading) {
@@ -67,6 +93,24 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
   // 按类型分组
   const grouped = groupByType(suggestions);
   console.log('[AI Features SuggestionChips] Grouped suggestions', grouped);
+
+  // 创建一个带全局索引的扁平数组，用于广告插入
+  const flattenedItems = useMemo(() => {
+    let idx = 0;
+    const result: Array<{ suggestion: FollowUpSuggestion; globalIndex: number; type: string; groupIndex: number; indexInGroup: number }> = [];
+    Object.entries(grouped).forEach(([type, items], groupIndex) => {
+      items.forEach((suggestion, indexInGroup) => {
+        result.push({
+          suggestion,
+          globalIndex: idx++,
+          type,
+          groupIndex,
+          indexInGroup,
+        });
+      });
+    });
+    return result;
+  }, [grouped]);
 
   return (
     <div style={{
@@ -92,49 +136,77 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '8px' }}>
-            {items.map((suggestion, index) => (
-              <div
-                key={suggestion.id}
-                style={{
-                  position: 'relative',
-                  padding: '10px 12px',
-                  background: 'white',
-                  border: '1px solid rgba(99, 102, 241, 0.2)',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  overflow: 'hidden',
-                  transition: 'all 0.2s ease',
-                  opacity: 0,
-                  animation: `fadeInUp 0.3s ease-out ${groupIndex * 0.1 + index * 0.05}s forwards`,
-                }}
-                onMouseEnter={() => setHoveredIndex(index)}
-                onMouseLeave={() => setHoveredIndex(null)}
-                onClick={() => onSelect(suggestion)}
-              >
-                {/* 置信度指示条 */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: '0',
-                    left: '0',
-                    height: '2px',
-                    background: 'linear-gradient(90deg, #6366f1, #a855f7)',
-                    transition: 'width 0.3s ease',
-                    width: `${suggestion.confidence * 100}%`,
-                  }}
-                />
+            {items.map((suggestion, index) => {
+              // 从扁平数组中找到对应的项，获取全局索引
+              const itemData = flattenedItems.find(item => item.suggestion.id === suggestion.id);
+              const currentIndex = itemData?.globalIndex ?? -1;
+              const shouldShowAd = shouldInsertAd && currentIndex === adInsertPosition;
 
-                {/* 建议文本 */}
-                <span style={{ display: 'block', fontSize: '13px', color: '#1f2937', lineHeight: '1.4' }}>
-                  {suggestion.text}
-                </span>
+              console.log('[AI Features SuggestionChips] Item render', {
+                type,
+                index,
+                currentIndex,
+                adInsertPosition,
+                shouldShowAd,
+              });
 
-                {/* 箭头 */}
-                {hoveredIndex === index && (
-                  <span style={{ position: 'absolute', bottom: '6px', right: '6px', color: '#6366f1', fontSize: '14px' }}>→</span>
-                )}
-              </div>
-            ))}
+              return (
+                <React.Fragment key={suggestion.id}>
+                  <div
+                    style={{
+                      position: 'relative',
+                      padding: '10px 12px',
+                      background: 'white',
+                      border: '1px solid rgba(99, 102, 241, 0.2)',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      overflow: 'hidden',
+                      transition: 'all 0.2s ease',
+                      opacity: 0,
+                      animation: `fadeInUp 0.3s ease-out ${groupIndex * 0.1 + index * 0.05}s forwards`,
+                    }}
+                    onMouseEnter={() => setHoveredIndex(currentIndex)}
+                    onMouseLeave={() => setHoveredIndex(null)}
+                    onClick={() => onSelect(suggestion)}
+                  >
+                    {/* 置信度指示条 */}
+                    <div
+                      style={{
+                        position: 'absolute',
+                        bottom: '0',
+                        left: '0',
+                        height: '2px',
+                        background: 'linear-gradient(90deg, #6366f1, #a855f7)',
+                        transition: 'width 0.3s ease',
+                        width: `${suggestion.confidence * 100}%`,
+                      }}
+                    />
+
+                    {/* 建议文本 */}
+                    <span style={{ display: 'block', fontSize: '13px', color: '#1f2937', lineHeight: '1.4' }}>
+                      {suggestion.text}
+                    </span>
+
+                    {/* 箭头 */}
+                    {hoveredIndex === currentIndex && (
+                      <span style={{ position: 'absolute', bottom: '6px', right: '6px', color: '#6366f1', fontSize: '14px' }}>→</span>
+                    )}
+                  </div>
+
+                  {/* AI Ad Network - 在指定位置插入 FollowUp 广告 */}
+                  {shouldShowAd && (
+                    <div
+                      style={{
+                        gridColumn: '1 / -1',
+                        animation: `fadeInUp 0.3s ease-out ${groupIndex * 0.1 + (index + 1) * 0.05}s forwards`,
+                      }}
+                    >
+                      <FollowUpSlot format="followup" placement="inline_questions" allAds={allAds} />
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </div>
         </div>
       ))}

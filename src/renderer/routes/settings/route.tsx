@@ -1,6 +1,7 @@
 import { ActionIcon, Box, Flex, Stack, Text } from '@mantine/core'
 import {
   IconAdjustmentsHorizontal,
+  IconAd,
   IconBook,
   IconBox,
   IconBrain,
@@ -71,6 +72,11 @@ const ITEMS = [
     key: 'chat',
     label: 'Chat Settings',
     icon: <IconMessages className="w-full h-full" />,
+  },
+  {
+    key: 'ads',
+    label: 'Ad Settings',
+    icon: <IconAd className="w-full h-full" />,
   },
   ...(platform.type === 'mobile'
     ? []

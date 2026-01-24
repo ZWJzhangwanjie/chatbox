@@ -10,6 +10,8 @@ import { useSidebarWidth } from '@/hooks/useScreenChange'
 import useShortcut from '@/hooks/useShortcut'
 import '@/modals'
 import NiceModal from '@ebay/nice-modal-react'
+// AI Ad Network - 广告系统 Provider
+import { AdProviderWrapper } from '@/packages/ads/AdProviderWrapper'
 import {
   Avatar,
   Button,
@@ -485,7 +487,10 @@ export const Route = createRootRoute({
           <CssBaseline />
           <NiceModal.Provider>
             <ErrorBoundary>
-              <Root />
+              {/* AI Ad Network - 广告系统 Provider 包裹整个应用 */}
+              <AdProviderWrapper>
+                <Root />
+              </AdProviderWrapper>
             </ErrorBoundary>
           </NiceModal.Provider>
         </ThemeProvider>

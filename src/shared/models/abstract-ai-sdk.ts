@@ -251,14 +251,12 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       if (isError) {
         if ((toolResult.result as unknown) instanceof Error) {
           const error = toolResult.result as Error
-          console.debug('mcp tool execute error', error)
           toolCallPart.result = {
             name: error.name,
             message: error.message,
             stack: error.stack,
           }
         } else {
-          console.debug('mcp tool execute error', toolResult.result)
           toolCallPart.result = toolResult.result ?? {
             message: 'Unknown tool error',
           }
@@ -473,8 +471,6 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
 
     try {
       for await (const chunk of result.fullStream) {
-        // console.debug('stream chunk', chunk)
-
         // Handle error chunks
         if (chunk.type === 'error') {
           this.handleError(chunk.error)

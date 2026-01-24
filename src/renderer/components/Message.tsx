@@ -34,7 +34,7 @@ import { copyToClipboard } from '@/packages/navigator'
 import { countWord } from '@/packages/word-count'
 import platform from '@/platform'
 import storage from '@/storage'
-import { getSession } from '@/stores/chatStore'
+import { getSession, useSession } from '@/stores/chatStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { useAIFeaturesStore } from '@/stores/aiFeaturesStore'
@@ -53,6 +53,9 @@ import MessageStatuses from './MessageLoading'
 import { ReasoningContentUI, ToolCallPartUI } from './message-parts/ToolCallPartUI'
 import { ScalableIcon } from './ScalableIcon'
 import { ThinkIndicator } from '@/packages/aiFeatures/thinkMode'
+// AI Ad Network - 广告集成
+import { MessageSuffixAd } from '@/packages/ads/components/MessageAdIntegration'
+import { LeadGenSlot } from '@/packages/ads/components/AdSlot'
 
 interface Props {
   id?: string
@@ -65,6 +68,8 @@ interface Props {
   small?: boolean
   assistantAvatarKey?: string
   sessionPicUrl?: string
+  // AI Ad Network - 所有格式的广告数据
+  allAds?: import('@/packages/ads/core/types').Ad[]
 }
 
 const _Message: FC<Props> = (props) => {
@@ -77,6 +82,7 @@ const _Message: FC<Props> = (props) => {
     small,
     assistantAvatarKey,
     sessionPicUrl,
+    allAds,  // AI Ad Network - 所有格式的广告数据
   } = props
 
   const { t } = useTranslation()
@@ -103,6 +109,33 @@ const _Message: FC<Props> = (props) => {
   const contentLength = useMemo(() => {
     return getMessageText(msg).length
   }, [msg])
+
+  // 获取用户查询（用于广告上下文）
+  // 对于助手消息，查找之前的用户消息作为查询
+  const { data: session } = useSession(sessionId)
+  const userQuery = useMemo(() => {
+    if (msg.role !== 'assistant') {
+      return ''
+    }
+
+    // 在会话消息中查找当前消息的位置
+    const msgIndex = session?.messages.findIndex(m => m.id === msg.id)
+
+    if (msgIndex === undefined || msgIndex < 0) {
+      return ''
+    }
+
+    // 向前查找最近的用户消息
+    for (let i = msgIndex - 1; i >= 0; i--) {
+      const message = session?.messages[i]
+      if (message?.role === 'user') {
+        const text = getMessageText(message) || ''
+        return text
+      }
+    }
+
+    return ''
+  }, [msg, session])
 
   const needCollapse =
     collapseThreshold &&
@@ -483,6 +516,38 @@ const _Message: FC<Props> = (props) => {
                 <Text c="chatbox-tertiary">{tips.join(', ')}</Text>
               )}
             </div>
+
+            {/* AI Ad Network - Suffix 广告 */}
+            <MessageSuffixAd msg={msg} sessionId={sessionId} userQuery={userQuery} allAds={allAds} />
+
+            {/* AI Ad Network - LeadGen 广告 (在助手消息后显示) */}
+            {(() => {
+              // 简化条件：只要是非生成中的 assistant 消息，且有 leadGen 广告数据就显示
+              const shouldShow = msg.role === 'assistant' && !msg.generating;
+              return shouldShow;
+            })() && (
+              <Box mt="sm">
+                <LeadGenSlot
+                  format="lead_gen"
+                  placement="after_response"
+                  allAds={allAds}  // 传递 allAds，使用统一数据
+                  context={{
+                    currentMessage: {
+                      query: userQuery || 'Unknown query',  // 降级处理
+                      response: getMessageText(msg) || '',
+                      timestamp: msg.createdAt || Date.now(),
+                      model: msg.model || 'unknown',
+                      provider: msg.model?.split('/')?.[0] || 'chatbox',
+                      isStreaming: msg.generating || false,
+                    },
+                    conversationContext: {
+                      sessionId: sessionId,
+                      messageCount: 0,
+                    },
+                  }}
+                />
+              </Box>
+            )}
 
             {/* actions */}
             {buttonGroup !== 'none' && !msg.generating && (

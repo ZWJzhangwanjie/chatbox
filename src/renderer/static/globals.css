@@ -349,3 +349,49 @@ html[data-need-room-for-windows-controls="true"] .pswp__top-bar {
 *::-webkit-scrollbar-corner {
   background-color: transparent;
 }
+
+/* ============================================================================
+   AI Ad Network - 样式变量覆盖
+   使广告组件使用 Chatbox 配色方案
+   ============================================================================ */
+
+:root {
+  /* 广告主色 - 使用 Chatbox 品牌色 */
+  --ad-primary: var(--chatbox-tint-brand);
+  --ad-primaryLight: #4dabf7;
+  --ad-primaryHover: #1c7ed6;
+
+  /* 广告背景色 - 使用 Chatbox 背景色 */
+  --ad-background: var(--chatbox-background-primary);
+  --ad-background-secondary: var(--chatbox-background-secondary);
+  --ad-background-hover: var(--chatbox-background-primary-hover);
+
+  /* 广告文字色 - 使用 Chatbox 文字色 */
+  --ad-text-primary: var(--chatbox-tint-primary);
+  --ad-text-secondary: var(--chatbox-tint-secondary);
+  --ad-text-muted: var(--chatbox-tint-tertiary);
+
+  /* 广告边框色 - 使用 Chatbox 边框色 */
+  --ad-border: var(--chatbox-border-primary);
+  --ad-border-secondary: var(--chatbox-border-secondary);
+
+  /* 广告圆角 - 使用 Chatbox 圆角 */
+  --ad-radius-sm: var(--chatbox-radius-sm);
+  --ad-radius-md: var(--chatbox-radius-md);
+  --ad-radius-lg: var(--chatbox-radius-lg);
+}
+
+/* Dark mode overrides */
+:root[data-mantine-color-scheme="dark"] {
+  --ad-primary: var(--chatbox-tint-brand);
+  --ad-primaryLight: #74c0fc;
+  --ad-primaryHover: #339af0;
+  --ad-background: var(--chatbox-background-primary);
+  --ad-background-secondary: var(--chatbox-background-secondary);
+  --ad-background-hover: var(--chatbox-background-primary-hover);
+  --ad-text-primary: var(--chatbox-tint-primary);
+  --ad-text-secondary: var(--chatbox-tint-secondary);
+  --ad-text-muted: var(--chatbox-tint-tertiary);
+  --ad-border: var(--chatbox-border-primary);
+  --ad-border-secondary: var(--chatbox-border-secondary);
+}

@@ -63,7 +63,6 @@ async function _searchRelatedResults(query: string, signal?: AbortSignal) {
     providers.map(async (provider) => {
       try {
         const result = await provider.search(query, signal)
-        console.debug(`web search result for "${query}":`, result.items)
         return result
       } catch (err) {
         console.error(err)
@@ -90,8 +89,6 @@ async function _searchRelatedResults(query: string, signal?: AbortSignal) {
     }
     i++
   } while (hasMore && items.length < MAX_CONTEXT_ITEMS)
-
-  console.debug('web search items', items)
 
   return items.map((item) => ({
     title: item.title,

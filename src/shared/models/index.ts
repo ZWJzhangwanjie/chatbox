@@ -31,7 +31,6 @@ import VolcEngine from './volcengine'
 import XAI from './xai'
 
 export function getProviderSettings(setting: SessionSettings, globalSettings: Settings) {
-  console.debug('getModel', setting.provider, setting.modelId)
   const provider = setting.provider
   if (!provider) {
     throw new Error('Model provider must not be empty.')
@@ -57,7 +56,6 @@ export function getModel(
   config: Config,
   dependencies: ModelDependencies
 ): ModelInterface {
-  console.debug('getModel', settings.provider, settings.modelId)
   const provider = settings.provider
   if (!provider) {
     throw new Error('Model provider must not be empty.')

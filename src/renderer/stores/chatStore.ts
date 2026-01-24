@@ -36,7 +36,6 @@ const QueryKeys = {
 
 // list sessions meta
 async function _listSessionsMeta(): Promise<SessionMeta[]> {
-  console.debug('chatStore', 'listSessionsMeta')
   const sessionMetaList = await storage.getItem<SessionMeta[]>(StorageKey.ChatSessionsList, [])
   // session list showing order: reversed, pinned at top
   return sessionMetaList
@@ -68,7 +67,6 @@ export async function updateSessionList(updater: UpdaterFn<SessionMeta[]>) {
       }
     )
   }
-  console.debug('chatStore', 'updateSessionList', updater)
   const result = await sessionListUpdateQueue.set(updater)
   queryClient.setQueryData(QueryKeys.ChatSessionsList, sortSessions(result))
 }
@@ -77,7 +75,6 @@ export async function updateSessionList(updater: UpdaterFn<SessionMeta[]>) {
 
 // get session
 async function _getSessionById(id: string): Promise<Session | null> {
-  console.debug('chatStore', 'getSessionById', id)
   const session = await storage.getItem<Session | null>(StorageKeyGenerator.session(id), null)
   if (!session) {
     return null
@@ -110,7 +107,6 @@ function _setSessionCache(sessionId: string, updated: Session | null) {
 
 // create session
 export async function createSession(newSession: Omit<Session, 'id'>, previousId?: string) {
-  console.debug('chatStore', 'createSession', newSession)
   const { chat: lastUsedChatModel, picture: lastUsedPictureModel } = lastUsedModelStore.getState()
   const session = {
     ...newSession,
@@ -141,14 +137,12 @@ export async function createSession(newSession: Omit<Session, 'id'>, previousId?
 const sessionUpdateQueues: Record<string, UpdateQueue<Session>> = {}
 
 export async function updateSessionWithMessages(sessionId: string, updater: Updater<Session>) {
-  console.debug('chatStore', 'updateSession', sessionId, updater)
   if (!sessionUpdateQueues[sessionId]) {
     // do not use await here to avoid data race
     sessionUpdateQueues[sessionId] = new UpdateQueue<Session>(
       () => getSession(sessionId),
       async (session) => {
         if (session) {
-          console.debug('chatStore', 'persist session', sessionId)
           await storage.setItemNow(StorageKeyGenerator.session(sessionId), session)
         }
       }
@@ -196,7 +190,6 @@ export async function updateSession(sessionId: string, updater: Updater<Omit<Ses
 
 // only update session cache without touching storage, for performance sensitive usage
 export async function updateSessionCache(sessionId: string, updater: Updater<Session>) {
-  console.debug('chatStore', 'updateSessionCache', sessionId, updater)
   const session = await getSession(sessionId)
   if (!session) {
     throw new Error(`Session ${sessionId} not found`)
@@ -214,7 +207,6 @@ export async function updateSessionCache(sessionId: string, updater: Updater<Ses
 }
 
 export async function deleteSession(id: string) {
-  console.debug('chatStore', 'deleteSession', id)
   await storage.removeItem(StorageKeyGenerator.session(id))
   _setSessionCache(id, null)
   await updateSessionList((sessions) => {
@@ -268,7 +260,6 @@ export async function getSessionSettings(sessionId: string) {
 
 // list messages
 export async function listMessages(sessionId?: string | null): Promise<Message[]> {
-  console.debug('chatStore', 'listMessages', sessionId)
   if (!sessionId) {
     return []
   }
@@ -433,8 +424,6 @@ export async function removeMessage(sessionId: string, messageId: string) {
  * This will clear the current session list and rebuild it from all found sessions
  */
 export async function recoverSessionList() {
-  console.debug('chatStore', 'recoverSessionList')
-
   // Get all storage keys
   const allKeys = await storage.getAllKeys()
 
@@ -478,12 +467,6 @@ export async function recoverSessionList() {
 
   // Update the query cache, apply additional sorting rules (pinned sessions, etc.)
   queryClient.setQueryData(QueryKeys.ChatSessionsList, sortSessions(recoveredSessionMetas))
-
-  console.debug(
-    'chatStore',
-    'recoverSessionList',
-    `Recovered ${recoveredSessionMetas.length} sessions, ${failedKeys.length} failed`
-  )
 
   return { recovered: recoveredSessionMetas.length, failed: failedKeys.length }
 }

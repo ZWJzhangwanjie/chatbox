@@ -15,9 +15,10 @@
 import { Box, Loader, Paper, Stack, Text, Alert } from '@mantine/core'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { lazy, Suspense, memo, useMemo, useState, useEffect } from 'react'
-import type { Ad, AdTriggerContext } from '../core/types'
+import type { Ad, AdTriggerContext, SlotResponse } from '../core/types'
 import { useAdData } from '../hooks/useAdData'
 import { useAdConfig } from '../hooks/useAdConfig'
+import { isAdFormatMatch, getAdFormatAliases } from '../utils/adFormatUtils'
 
 // ============================================================================
 // 动态导入 SDK 组件
@@ -91,6 +92,12 @@ export interface AdSlotProps {
   allAds?: Ad[]
   /** 广告触发上下文（可选，如果不提供则使用默认值） */
   context?: AdTriggerContext
+  /** Slot ID（新增，用于直接从 slots 获取广告） */
+  slotId?: string
+  /** 按 slotId 获取广告的便捷方法（新增） */
+  getAdsBySlot?: (slotId: string) => Ad[]
+  /** 获取 slot 原始数据的便捷方法（新增） */
+  getSlot?: (slotId: string) => SlotResponse | undefined
 }
 
 // ============================================================================
@@ -110,14 +117,8 @@ interface SDKAdWrapperProps {
  * 添加额外的 className 以便应用 Chatbox 样式覆盖
  */
 const SDKAdWrapper = memo(({ ad, format, variant, onClick }: SDKAdWrapperProps) => {
-  // 调试日志
-  console.log(`[🎨 SDKAdWrapper] Rendering ${format} ad:`, {
-    adId: ad.id,
-    format,
-    variant,
-    contentKeys: Object.keys(ad.content || {}),
-    content: ad.content,
-  })
+  // 获取配置
+  const config = useAdConfig()
 
   // 添加点击处理
   const handleClick = () => {
@@ -137,22 +138,6 @@ const SDKAdWrapper = memo(({ ad, format, variant, onClick }: SDKAdWrapperProps) 
       console.error(`[SDKAdWrapper] Missing required field 'title' for ${format} ad`, ad)
       setHasError(true)
       setErrorMessage(`Missing required field: content.title`)
-    } else {
-      // 成功渲染日志（带唯一标识 success_ad_format）
-      console.log(`[success_ad_format] ${format} ad rendered successfully`, {
-        ad_id: ad.id,
-        format,
-        title: ad.content.title,
-        hasError: false,
-      })
-
-      // source 格式特殊警告：如果系统没有资料引用功能，link 可能缺失
-      if (format === 'source' && !ad.content?.link && !ad.content?.url) {
-        console.warn(`[success_ad_format] ${format} ad has no link/url - this may be expected if the system doesn't have citation/reference data`, {
-          ad_id: ad.id,
-          title: ad.content.title,
-        })
-      }
     }
   }, [ad, format])
 
@@ -198,9 +183,22 @@ const SDKAdWrapper = memo(({ ad, format, variant, onClick }: SDKAdWrapperProps) 
           )
 
         case 'static':
+          // 从配置中获取尺寸参数
+          const staticConfig = config.formats.static
+          // 使用内联样式强制覆盖SDK的默认尺寸
+          const wrapperStyle = {
+            '--static-ad-width': `${staticConfig.width}px`,
+            '--static-ad-height': `${staticConfig.height}px`,
+          } as React.CSSProperties
           return (
             <Suspense fallback={<AdLoadingSkeleton />}>
-              <SDKStaticAd ad={ad} />
+              <div style={wrapperStyle} className="static-ad-size-wrapper">
+                <SDKStaticAd
+                  ad={ad}
+                  width={staticConfig.width}
+                  height={staticConfig.height}
+                />
+              </div>
             </Suspense>
           )
 
@@ -324,6 +322,9 @@ export function AdSlot({
   ads: externalAds,
   allAds,
   context: externalContext,
+  slotId,
+  getAdsBySlot,
+  getSlot,
 }: AdSlotProps) {
   // 获取配置
   const config = useAdConfig()
@@ -351,48 +352,33 @@ export function AdSlot({
   }, [propVariant, format, config])
 
   // 确定要显示的广告数据：
+  // 新增优先级（支持 slot-based 访问）：
+  // 0. 如果提供了 slotId 和 getAdsBySlot，优先使用 slotId 获取广告
   // 1. 优先使用 ads 参数（指定格式的广告）
   // 2. 其次从 allAds 中过滤出当前格式的广告
   // 3. 最后才使用 useAdData 独立获取
-  const shouldUseExternalData = !!(externalAds || allAds)
+  const shouldUseExternalData = !!(externalAds || allAds || (slotId && getAdsBySlot))
 
-  // 支持多种格式名称的映射（API 返回的命名可能不同）
-  const formatAliases: Record<string, string[]> = {
-    action_card: ['action_card', 'actionCard'],
-    actionCard: ['action_card', 'actionCard'],
-    suffix: ['suffix'],
-    followup: ['followup', 'followUp'],
-    followUp: ['followup', 'followUp'],
-    source: ['source', 'sponsoredSource'],
-    lead_gen: ['lead_gen', 'leadGen'],
-    leadGen: ['lead_gen', 'leadGen'],
-    static: ['static'],
+  // 使用工具函数获取该格式的所有别名（支持各种命名格式）
+  const aliases = getAdFormatAliases(format)
+
+  // 新增：使用 slotId 获取广告（如果提供了 slotId 和 getAdsBySlot）
+  let adsFromSlot: Ad[] | undefined = undefined
+  if (slotId && getAdsBySlot && typeof getAdsBySlot === 'function') {
+    try {
+      adsFromSlot = getAdsBySlot(slotId) || []
+    } catch (error) {
+      console.error('[❌ AdSlot getAdsBySlot error]:', error)
+      adsFromSlot = []
+    }
   }
 
-  // 获取该格式的所有别名
-  const aliases = formatAliases[format] || [format]
-
-  // 使用别名过滤
-  const adsFromAll = allAds ? allAds.filter(ad => aliases.includes(ad.type)) : undefined
-  const finalAds = externalAds ?? adsFromAll
-
-  // 调试日志
-  const allAdsTypes = allAds?.map(ad => ad.type) || []
-  console.log('[🔍 AdSlot DATA FLOW]', {
-    format,
-    placement,
-    hasExternalAds: !!externalAds,
-    externalAdsCount: externalAds?.length || 0,
-    hasAllAds: !!allAds,
-    allAdsCount: allAds?.length || 0,
-    allAdsTypes,
-    adsFromAllCount: adsFromAll?.length || 0,
-    finalAdsCount: finalAds?.length || 0,
-    shouldUseExternalData,
-  })
+  // 使用别名过滤（使用工具函数进行匹配）
+  const adsFromAll = allAds ? allAds.filter(ad => isAdFormatMatch(ad.type, aliases)) : undefined
+  const finalAds = externalAds ?? adsFromSlot ?? adsFromAll
 
   // 使用外部提供的 context，或创建默认的 context
-  const adContext: AdTriggerContext = useMemo(() => {
+  const adContext = useMemo(() => {
     if (externalContext) {
       return externalContext
     }
@@ -410,6 +396,7 @@ export function AdSlot({
       conversationContext: {
         sessionId: 'default',
         messageCount: 0,
+        messages: [],
       },
     }
   }, [externalContext])
@@ -422,16 +409,6 @@ export function AdSlot({
 
   // 最终使用的广告数据
   const displayAds = finalAds ?? fetchedAds
-
-  // 调试日志：最终数据
-  console.log('[🎯 AdSlot FINAL DATA]', {
-    format,
-    finalAdsCount: finalAds?.length || 0,
-    fetchedAdsCount: fetchedAds?.length || 0,
-    displayAdsCount: displayAds.length,
-    isLoading,
-    isError,
-  })
 
   // 回调处理
   if (onLoadingStart && isLoading) {

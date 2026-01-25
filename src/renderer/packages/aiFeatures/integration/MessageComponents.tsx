@@ -17,6 +17,13 @@ interface AIFeaturesMessageProps {
   sessionId: string;
   /** AI Ad Network - 所有格式的广告数据 */
   allAds?: import('@/packages/ads/core/types').Ad[];
+  /** AI Ad Network - 广告集成数据（包含 getAdsBySlot 和 getSlot） */
+  adData?: {
+    ads: import('@/packages/ads/core/types').Ad[];
+    slots: import('@/packages/ads/core/types').SlotResponse[];
+    getAdsBySlot: (slotId: string) => import('@/packages/ads/core/types').Ad[];
+    getSlot: (slotId: string) => import('@/packages/ads/core/types').SlotResponse | undefined;
+  };
 }
 
 /**
@@ -25,11 +32,19 @@ interface AIFeaturesMessageProps {
  * 注意：思考过程已移至消息内容内显示，不再在此处显示
  */
 export const AIFeaturesMessage = memo<AIFeaturesMessageProps>(
-  ({ followUpSuggestions, recommendations, sessionId, allAds }) => {
+  ({ followUpSuggestions, recommendations, sessionId, allAds, adData }) => {
+    // 从 adData 中获取便捷方法
+    const getAdsBySlot = adData?.getAdsBySlot;
+    const getSlot = adData?.getSlot;
+
+    // 检查是否有 followup 广告数据
+    const hasFollowUpAd = getAdsBySlot && getAdsBySlot('slot-followup')?.length > 0;
+
     // 如果没有任何数据，不渲染任何内容
     const hasAnyData =
       followUpSuggestions.length > 0 ||
-      recommendations.length > 0;
+      recommendations.length > 0 ||
+      hasFollowUpAd;
 
     if (!hasAnyData) {
       return null;
@@ -49,13 +64,15 @@ export const AIFeaturesMessage = memo<AIFeaturesMessageProps>(
           </div>
         )}
 
-        {/* 智能追问 */}
-        {followUpSuggestions.length > 0 && (
+        {/* 智能追问 - 有建议或有广告时都显示 */}
+        {(followUpSuggestions.length > 0 || hasFollowUpAd) && (
           <div style={{ margin: '16px 0' }}>
             <SuggestionChips
               suggestions={followUpSuggestions}
               onSelect={(suggestion) => handleSuggestionSelect(suggestion, sessionId)}
               allAds={allAds}
+              getAdsBySlot={getAdsBySlot}
+              getSlot={getSlot}
             />
           </div>
         )}

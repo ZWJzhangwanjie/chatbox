@@ -18,6 +18,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAdConfigStore } from './config/adConfigStore';
 import platform from '@/platform';
+import { getMemoryCache } from './core/MemoryCache';
 
 // ============================================================================
 // 类型定义
@@ -123,6 +124,19 @@ export function AdProviderWrapper({ children }: AdProviderWrapperProps) {
       });
     });
 
+    // 初始化记忆缓存：立即触发一次加载
+    const memoryCache = getMemoryCache();
+    memoryCache.refresh().catch((err) => {
+      console.warn('[AdProviderWrapper] 初始记忆加载失败:', err);
+    });
+
+    // 每30秒自动刷新记忆缓存
+    const refreshInterval = setInterval(() => {
+      memoryCache.refresh().catch((err) => {
+        console.warn('[AdProviderWrapper] 定期记忆刷新失败:', err);
+      });
+    }, 30000);
+
     // 获取设备信息（用户ID、应用版本等）
     Promise.all([
       platform.getConfig().then((cfg) => cfg.uuid).catch(() => undefined),
@@ -142,6 +156,11 @@ export function AdProviderWrapper({ children }: AdProviderWrapperProps) {
       .catch((error) => {
         console.warn('[AdProviderWrapper] Failed to get device info:', error);
       });
+
+    // 清理函数
+    return () => {
+      clearInterval(refreshInterval);
+    };
   }, []);
 
   // 动态加载 SDK 组件

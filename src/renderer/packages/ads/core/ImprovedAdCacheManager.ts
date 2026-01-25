@@ -148,11 +148,6 @@ export class ImprovedAdCacheManager {
 
     // 启动定期清理任务
     this.startCleanupScheduler();
-
-    console.log('[ImprovedAdCacheManager] Initialized', {
-      maxCacheSize: (this as any).MAX_CACHE_SIZE,
-      defaultTTL: this.DEFAULT_TTL_MS,
-    });
   }
 
   // ========== 公共方法 ==========

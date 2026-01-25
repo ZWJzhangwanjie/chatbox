@@ -4,7 +4,7 @@
  * 检测和过滤敏感个人信息，支持隐私模式
  */
 
-import type { Memory } from 'src/shared/types'
+import type { Memory } from '../../shared/types'
 import { getLogger } from '../util'
 
 const log = getLogger('memory:privacy-filter')

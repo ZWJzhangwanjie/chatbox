@@ -110,31 +110,21 @@ export class FrequencyController {
    * ```
    */
   shouldShow(format?: string): boolean {
-    console.log('[📊 FrequencyController.shouldShow CALLED]', {
-      format,
-      messageCount: this.messageCount,
-      adCount: this.adCount,
-    });
-
     // 如果指定了格式，检查该格式
     if (format) {
       const result = this.shouldShowFormat(format);
-      console.log('[📊 shouldShowFormat result]', { format, result });
       return result;
     }
 
     // 检查所有启用的格式
     const activeFormats = this.getActiveFormats();
-    console.log('[📊 Active formats]', activeFormats);
 
     for (const formatName of activeFormats) {
       if (this.shouldShowFormat(formatName)) {
-        console.log('[✅ shouldShow = TRUE]', formatName);
         return true;
       }
     }
 
-    console.log('[❌ shouldShow = FALSE]', 'No format passed checks');
     return false;
   }
 
@@ -197,12 +187,6 @@ export class FrequencyController {
    */
   recordMessage(): void {
     this.messageCount++;
-
-    console.log('[📈 FrequencyController.recordMessage]', {
-      newTotal: this.messageCount,
-      previousTotal: this.messageCount - 1,
-      debug: this.config.debug,
-    });
 
     if (this.config.debug) {
       console.log(`[FrequencyController] Message recorded. Total: ${this.messageCount}`);

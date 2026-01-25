@@ -1,12 +1,12 @@
 import { getLogger } from '../util'
-import type { Memory, MemorySearchOptions, MemoryStats, MemorySummary } from 'src/shared/types'
+import type { Memory, MemorySearchOptions, MemoryStats, MemorySummary } from '../../shared/types'
 import {
   generateMemoryId,
   isMemoryExpired,
   updateMemoryAccess,
   type MemoryType,
   type MemorySource,
-} from 'src/shared/types'
+} from '../../shared/types'
 import { getDatabase, withTransaction } from '../knowledge-base/db'
 
 const log = getLogger('memory:store')

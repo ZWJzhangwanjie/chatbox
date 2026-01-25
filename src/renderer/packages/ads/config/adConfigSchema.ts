@@ -255,7 +255,7 @@ const PrivacyConfigSchema = z.object({
     'context',
     'memory',
     'profile',
-  ])).default(['query', 'response']),
+  ])).default(['query', 'response', 'context', 'memory', 'profile']),
 });
 
 // ============================================================================
@@ -418,7 +418,7 @@ export function getSchemaDefaults(): AdConfig {
       enabled: true,
       requireConsent: true,
       dataRetentionDays: 0,
-      allowedDataTypes: ['query', 'response'],
+      allowedDataTypes: ['query', 'response', 'context', 'memory', 'profile'],
     },
     debug: false,
   });

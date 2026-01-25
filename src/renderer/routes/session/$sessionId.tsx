@@ -1,4 +1,5 @@
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import Footer from '@/components/Footer'
 import Header from '@/components/Header'
 import InputBox from '@/components/InputBox/InputBox'
 import MessageList, { type MessageListRef } from '@/components/MessageList'
@@ -170,6 +171,10 @@ function RouteComponent() {
           onStopGenerating={onStopGenerating}
         />
       </ErrorBoundary>
+
+      {/* AI Ad Network - Footer 广告 (在 InputBox 下方) */}
+      <Footer session={currentSession} />
+
       <ThreadHistoryDrawer session={currentSession} />
     </div>
   ) : (

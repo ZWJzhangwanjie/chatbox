@@ -18,6 +18,17 @@ import type { AdTriggerContext } from '../core/types'
 import { getMessageText } from '../../../../shared/utils/message'
 
 // ============================================================================
+// 导出类型（供 Message.tsx 使用）
+// ============================================================================
+
+export interface AdIntegrationData {
+  ads?: import('../core/types').Ad[]
+  slots?: import('../core/types').SlotResponse[]
+  getAdsBySlot?: (slotId: string) => import('../core/types').Ad[]
+  getSlot?: (slotId: string) => import('../core/types').SlotResponse | undefined
+}
+
+// ============================================================================
 // 类型定义
 // ============================================================================
 
@@ -28,8 +39,8 @@ interface MessageAdIntegrationProps {
   sessionId: string
   /** 用户查询文本（可选，用于构建广告上下文） */
   userQuery?: string
-  /** 所有格式的广告数据（来自统一的 useAds hook） */
-  allAds?: Ad[]
+  /** 广告集成数据（包含 slots 和便捷方法） */
+  adData?: AdIntegrationData
 }
 
 // ============================================================================
@@ -47,25 +58,16 @@ interface MessageAdIntegrationProps {
  * 4. 消息来自助手（role = 'assistant'）
  * 5. 消息有实际内容
  */
-export const MessageSuffixAd = memo<MessageAdIntegrationProps>(({ msg, sessionId, userQuery = '', allAds }) => {
+export const MessageSuffixAd = memo<MessageAdIntegrationProps>(({ msg, sessionId, userQuery = '', adData }) => {
   // 所有 Hooks 必须在组件顶层调用，顺序必须一致
   const isAdEnabled = useIsAdEnabled()
   const isSuffixEnabled = useIsFormatEnabled('suffix')
   const config = useAdConfig()  // 必须在这里调用，不能在后面的渲染中调用
   const { userData } = useMemoryForAds()
 
-  // 调试日志：检查配置状态
-  console.log('[🔍 MessageSuffixAd CHECK]', {
-    msgRole: msg.role,
-    msgGenerating: msg.generating,
-    hasText: !!msg.text,
-    hasContentParts: (msg.contentParts?.length || 0) > 0,
-    userQuery: userQuery?.substring(0, 50),
-    isAdEnabled,
-    isSuffixEnabled,
-    hasAllAds: !!allAds,
-    suffixAdsCount: allAds ? allAds.filter(ad => ad.type === 'suffix').length : 0,
-  })
+  // 从 adData 中解构出便捷方法（用于 slot-based 访问）
+  const getAdsBySlot = adData?.getAdsBySlot
+  const getSlot = adData?.getSlot
 
   // 使用 getMessageText 提取消息内容（从 contentParts 或 text 字段）
   const responseText = getMessageText(msg)
@@ -93,31 +95,18 @@ export const MessageSuffixAd = memo<MessageAdIntegrationProps>(({ msg, sessionId
 
   // 判断是否应该显示广告
   const shouldShow = useMemo(() => {
-    const result = (
+    return (
       isAdEnabled &&
       isSuffixEnabled &&
       msg.role === 'assistant' &&
       !msg.generating &&
       (msg.contentParts?.length > 0 || msg.text)
     )
-    console.log('[✅ MessageSuffixAd shouldShow]', {
-      result,
-      checks: {
-        isAdEnabled,
-        isSuffixEnabled,
-        isAssistant: msg.role === 'assistant',
-        notGenerating: !msg.generating,
-        hasContent: (msg.contentParts?.length || 0) > 0 || msg.text,
-      },
-    })
-    return result
   }, [isAdEnabled, isSuffixEnabled, msg.role, msg.generating, msg.contentParts, msg.text])
 
   if (!shouldShow) {
     return null
   }
-
-  console.log('[🎨 MessageSuffixAd RENDERING SuffixSlot]')
 
   return (
     <Box mt="md">
@@ -126,7 +115,9 @@ export const MessageSuffixAd = memo<MessageAdIntegrationProps>(({ msg, sessionId
         placement="after_response"
         showDebug={config.debug}
         context={adContext}
-        allAds={allAds}  // 传递 allAds，SuffixSlot 会自动过滤
+        slotId="slot-suffix"
+        getAdsBySlot={getAdsBySlot}
+        getSlot={getSlot}
       />
     </Box>
   )
@@ -152,7 +143,10 @@ export const MessageSponsoredSourceAd = memo<MessageAdIntegrationProps & {
   sourceCount: number
   /** 广告插入位置 */
   adPosition?: number
-}>(({ msg, sessionId, sourceCount, adPosition = 1 }) => {
+}>(({ msg, sessionId, sourceCount, adPosition = 1, adData }) => {
+  // 从 adData 中解构出便捷方法（用于 slot-based 访问）
+  const getAdsBySlot = adData?.getAdsBySlot
+  const getSlot = adData?.getSlot
   const isAdEnabled = useIsAdEnabled()
   const isSourceEnabled = useIsFormatEnabled('source')
   const config = useAdConfig()
@@ -178,6 +172,9 @@ export const MessageSponsoredSourceAd = memo<MessageAdIntegrationProps & {
         format="source"
         placement="inline"
         showDebug={config.debug}
+        slotId="slot-source"
+        getAdsBySlot={getAdsBySlot}
+        getSlot={getSlot}
       />
     </Box>
   )

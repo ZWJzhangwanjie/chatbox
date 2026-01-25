@@ -77,10 +77,7 @@ export function RouteComponent() {
   const { data: allMemories = [], refetch: refetchMemories } = useQuery({
     queryKey: ['allMemories', activeTab === 'all' ? { filterType } : {}],
     queryFn: async () => {
-      if (platform.type === 'web') return []
-      if (activeTab === 'all') {
-        return await platform.getAllMemories()
-      }
+      // 移除 Web 模式的限制，现在 Web 模式也支持记忆功能
       return await platform.getAllMemories()
     },
     refetchInterval: 30000,
@@ -90,16 +87,6 @@ export function RouteComponent() {
   const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['memoryStats'],
     queryFn: async () => {
-      if (platform.type === 'web') {
-        return {
-          total: 0,
-          byType: {},
-          bySource: {},
-          byCategory: {},
-          thisWeek: 0,
-          thisMonth: 0,
-        }
-      }
       return await platform.getMemoryStats()
     },
     refetchInterval: 30000,
@@ -109,16 +96,6 @@ export function RouteComponent() {
   const { data: summary, refetch: refetchSummary } = useQuery({
     queryKey: ['memorySummary'],
     queryFn: async () => {
-      if (platform.type === 'web') {
-        return {
-          totalCount: 0,
-          byType: {},
-          byCategory: {},
-          recentMemories: [],
-          pinnedCount: 0,
-          archivedCount: 0,
-        }
-      }
       return await platform.getMemorySummary()
     },
     refetchInterval: 30000,
@@ -454,11 +431,11 @@ export function RouteComponent() {
                           <Group>
                             <NumberInput
                               label={t('Extract Every')}
-                              description="条消息后提取一次"
-                              value={settings.memorySettings?.extractOnMessageCount ?? 10}
-                              min={5}
-                              max={100}
-                              step={5}
+                              description="条消息后提取一次（1-10条）"
+                              value={settings.memorySettings?.extractOnMessageCount ?? 3}
+                              min={1}
+                              max={10}
+                              step={1}
                               onChange={(value) => updateMemorySettingsMutation.mutate({ extractOnMessageCount: value as number })}
                               style={{ flex: 1, maxWidth: 200 }}
                             />

@@ -84,7 +84,7 @@ export function settings(): Settings {
       storageLocation: 'local',
       retentionDays: 0,
       autoExtract: true,
-      extractOnMessageCount: 10,
+      extractOnMessageCount: 3,  // 降低阈值，更及时提取
       privacyMode: false,
     },
 

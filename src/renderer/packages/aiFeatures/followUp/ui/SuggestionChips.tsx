@@ -33,8 +33,12 @@ interface SuggestionChipsProps {
   onSelect: (suggestion: FollowUpSuggestion) => void;
   onCustomFollowUp?: () => void;
   loading?: boolean;
-  /** AI Ad Network - 所有格式的广告数据 */
-  allAds?: import('@/packages/ads/core/types').Ad[];
+  /** AI Ad Network - 广告集成数据 */
+  slots?: import('@/packages/ads/core/types').SlotResponse[];
+  /** 按 slotId 获取广告的便捷方法 */
+  getAdsBySlot?: (slotId: string) => import('@/packages/ads/core/types').Ad[];
+  /** 获取 slot 原始数据的便捷方法 */
+  getSlot?: (slotId: string) => import('@/packages/ads/core/types').SlotResponse | undefined;
 }
 
 export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
@@ -42,7 +46,9 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
   onSelect,
   onCustomFollowUp,
   loading = false,
-  allAds,
+  slots,
+  getAdsBySlot,
+  getSlot,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(false);
@@ -54,15 +60,22 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
 
   // 计算是否应该插入广告
   const { shouldInsertAd, adInsertPosition } = useMemo(() => {
-    // 如果广告未启用或没有足够的建议，直接返回
-    if (!isAdEnabled || !isFollowUpAdEnabled || suggestions.length < 2) {
+    // 如果广告未启用，直接返回
+    if (!isAdEnabled || !isFollowUpAdEnabled) {
       return { shouldInsertAd: false, adInsertPosition: -1 };
     }
 
-    // 根据建议数量决定插入位置（在第2条建议后插入）
-    const position = Math.min(2, suggestions.length - 1);
+    // 检查是否有 followup 广告数据
+    const hasFollowUpAd = getAdsBySlot && getAdsBySlot('slot-followup')?.length > 0;
+    if (!hasFollowUpAd) {
+      return { shouldInsertAd: false, adInsertPosition: -1 };
+    }
+
+    // 只要有广告数据就可以显示，不依赖建议数量
+    // 如果有建议，在第2条建议后插入；如果没有建议，直接显示广告
+    const position = suggestions.length >= 2 ? 1 : 0;
     return { shouldInsertAd: true, adInsertPosition: position };
-  }, [suggestions, isAdEnabled, isFollowUpAdEnabled]);
+  }, [suggestions, isAdEnabled, isFollowUpAdEnabled, getAdsBySlot]);
 
   // 组件挂载后延迟显示，实现淡入效果
   useEffect(() => {
@@ -86,8 +99,8 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
     return <div style={{ padding: '16px', color: '#9ca3af', fontSize: '14px', textAlign: 'center', background: 'yellow', border: '2px solid red' }}>加载建议中...</div>;
   }
 
-  if (suggestions.length === 0) {
-    console.log('[AI Features SuggestionChips] No suggestions, returning null');
+  // 如果既没有建议也没有广告，不渲染任何内容
+  if (suggestions.length === 0 && !shouldInsertAd) {
     return null;
   }
 
@@ -123,11 +136,13 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
       transform: isVisible ? 'translateY(0)' : 'translateY(8px)',
       transition: 'opacity 0.4s ease-out, transform 0.4s ease-out',
     }}>
-      {/* 标题 */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '14px', fontWeight: 600, color: '#6366f1' }}>
-        <span style={{ fontSize: '18px' }}>💡</span>
-        <span>建议继续了解</span>
-      </div>
+      {/* 标题 - 只在有建议或广告时显示 */}
+      {(suggestions.length > 0 || shouldInsertAd) && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', fontSize: '14px', fontWeight: 600, color: '#6366f1' }}>
+          <span style={{ fontSize: '18px' }}>💡</span>
+          <span>建议继续了解</span>
+        </div>
+      )}
 
       {/* 按类型展示 */}
       {Object.entries(grouped).map(([type, items], groupIndex) => (
@@ -202,7 +217,14 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
                         animation: `fadeInUp 0.3s ease-out ${groupIndex * 0.1 + (index + 1) * 0.05}s forwards`,
                       }}
                     >
-                      <FollowUpSlot format="followup" placement="inline_questions" showDebug={config.debug} allAds={allAds} />
+                      <FollowUpSlot
+                        format="followup"
+                        placement="inline_questions"
+                        showDebug={config.debug}
+                        slotId="slot-followup"
+                        getAdsBySlot={getAdsBySlot}
+                        getSlot={getSlot}
+                      />
                     </div>
                   )}
                 </React.Fragment>
@@ -211,6 +233,24 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
           </div>
         </div>
       ))}
+
+      {/* 如果没有建议但有广告，直接显示广告 */}
+      {suggestions.length === 0 && shouldInsertAd && (
+        <div
+          style={{
+            animation: 'fadeInUp 0.3s ease-out 0.1s forwards',
+          }}
+        >
+          <FollowUpSlot
+            format="followup"
+            placement="inline_questions"
+            showDebug={config.debug}
+            slotId="slot-followup"
+            getAdsBySlot={getAdsBySlot}
+            getSlot={getSlot}
+          />
+        </div>
+      )}
 
       {/* 自定义追问按钮 */}
       {onCustomFollowUp && (

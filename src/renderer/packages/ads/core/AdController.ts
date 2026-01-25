@@ -12,7 +12,14 @@
  */
 
 import type { AdConfig } from '../config/adConfigSchema';
-import type { AdTriggerContext, Ad, AdApiResponse } from './types';
+import type {
+  AdTriggerContext,
+  Ad,
+  AdApiResponse,
+  SlotResponse,
+  ApiAd,
+  SlotStatus
+} from './types';
 import { FrequencyController } from './FrequencyController';
 import { DataCollector } from './DataCollector';
 import { AdRequestBuilder } from './AdRequestBuilder';
@@ -42,17 +49,23 @@ export interface FetchAdsOptions {
 }
 
 /**
- * 广告获取结果
+ * 广告获取结果（扩展版，支持 slots）
  */
 export interface FetchAdsResult {
-  /** 获取到的广告列表 */
+  /** 获取到的广告列表（扁平化，向后兼容） */
   ads: Ad[];
+  /** Slot 原始响应（新增） */
+  slots?: SlotResponse[];
   /** 是否使用了Mock数据 */
   isMock: boolean;
   /** 获取过程中的错误（如果有） */
   error: Error | null;
   /** 请求耗时（毫秒） */
   duration: number;
+  /** 按 slotId 获取广告的便捷方法（新增） */
+  getAdsBySlot?: (slotId: string) => Ad[];
+  /** 获取 slot 原始数据的便捷方法（新增） */
+  getSlot?: (slotId: string) => SlotResponse | undefined;
 }
 
 /**
@@ -279,9 +292,12 @@ export class AdController {
         }
         return {
           ads: [],
+          slots: [],
           isMock: false,
           error: null,
           duration: Date.now() - startTime,
+          getAdsBySlot: () => [],
+          getSlot: () => undefined,
         };
       }
 
@@ -297,9 +313,12 @@ export class AdController {
         }
         return {
           ads: cached.ads,
+          slots: [],  // Cached data doesn't have slots info
           isMock: cached.isMock,
           error: null,
           duration: Date.now() - startTime,
+          getAdsBySlot: () => [],
+          getSlot: () => undefined,
         };
       }
 
@@ -340,9 +359,12 @@ export class AdController {
 
       return {
         ads: [],
+        slots: [],
         isMock: false,
         error: err,
         duration: Date.now() - startTime,
+        getAdsBySlot: () => [],
+        getSlot: () => undefined,
       };
     }
   }
@@ -452,19 +474,15 @@ export class AdController {
           const debounceResult = this.debounceManager.shouldDebounce(cacheKey);
 
           if (debounceResult.shouldDebounce) {
-            const timeRemaining = Math.ceil((debounceResult.remainingMs || 0) / 1000);
-            console.log(`[🛑 AdController #${requestId}] Request blocked by debounce`, {
-              cacheKey,
-              reason: debounceResult.reason,
-              timeRemaining: `${timeRemaining}s`,
-            });
-
             // 返回空结果，不发送请求
             return {
               ads: [],
+              slots: [],
               isMock: false,
               error: null,
               duration: Date.now() - startTime,
+              getAdsBySlot: () => [],
+              getSlot: () => undefined,
             };
           }
         }
@@ -479,18 +497,14 @@ export class AdController {
         for (const cacheKey of cacheKeys) {
           const lastRequestTime = this.requestCache.get(cacheKey);
           if (lastRequestTime && now - lastRequestTime < this.DEBOUNCE_MS) {
-            const timeRemaining = Math.ceil((this.DEBOUNCE_MS - (now - lastRequestTime)) / 1000);
-            console.log(`[🛑 AdController #${requestId}] Request blocked by debounce (legacy)`, {
-              cacheKey,
-              lastRequestTime: new Date(lastRequestTime).toISOString(),
-              timeRemaining: `${timeRemaining}s`,
-            });
-
             return {
               ads: [],
+              slots: [],
               isMock: false,
               error: null,
               duration: Date.now() - startTime,
+              getAdsBySlot: () => [],
+              getSlot: () => undefined,
             };
           }
         }
@@ -564,16 +578,18 @@ export class AdController {
 
       // 如果 query 为空，不请求广告（API 会返回 400 错误）
       if (!query || query.trim().length === 0) {
-        console.log(`[❌ AdController #${requestId}] Query is empty, skipping ad request`);
         // 清除缓存标记，因为这次没有实际发送请求
         for (const cacheKey of cacheKeys) {
           this.requestCache.delete(cacheKey);
         }
         return {
           ads: [],
+          slots: [],
           isMock: false,
           error: null,
           duration: Date.now() - startTime,
+          getAdsBySlot: () => [],
+          getSlot: () => undefined,
         };
       }
 
@@ -598,6 +614,15 @@ export class AdController {
           // 高级数据：用户画像（如果配置启用）
           ...(advancedData.userProfile && { profile: advancedData.userProfile }),
         },
+
+        // 调试：输出最终请求体中的 userContext
+        ...(this.config.debug && {
+          __debug: {
+            hasUserMemory: !!advancedData.userMemory,
+            userMemoryKeys: advancedData.userMemory ? Object.keys(advancedData.userMemory) : [],
+            hasUserProfile: !!advancedData.userProfile,
+          },
+        }),
         slots: formats.map((format) => {
           // 从配置中获取格式特定的选项
           let formatVariant = 'default';
@@ -703,13 +728,6 @@ export class AdController {
 
       const responseData = await response_data.json();
 
-      console.log(`[=====ADC_RESPONSE=====] #${requestId}`, {
-        success: responseData.success,
-        hasData: !!responseData.data,
-        slotsCount: responseData.data?.slots?.length || 0,
-        duration: Date.now() - startTime,
-      });
-
       // 解析响应 - 真实 API 返回格式
       if (!responseData.success || !responseData.data) {
         throw new Error(responseData.error?.message || 'Invalid response from ad server');
@@ -721,34 +739,14 @@ export class AdController {
 
       for (const slot of slots) {
         if (slot.status === 'filled' && slot.ads) {
-          console.log(`[📦 Slot #${requestId}]`, {
-            slotId: slot.slotId,
-            adsCount: slot.ads.length,
-            suggestions: slot.suggestions,
-          });
-
           for (const apiAd of slot.ads) {
             // 转换 API 广告格式到我们的 Ad 格式
             const original = apiAd.original || {};
             const adapted = apiAd.adapted || {};
             const tracking = apiAd.tracking || {};
 
-            // 调试日志：显示原始 adapted 数据
-            console.log(`[🔍 AdController] Converting ad ${original.id}:`, {
-              type: original.type,
-              adaptedKeys: Object.keys(adapted),
-              adapted: adapted,
-            });
-
             // 先转换内容格式（传递 tracking 用于降级）
             let content = this.convertAdaptedContentToAdContent(original.type, adapted, tracking);
-
-            // 调试日志：显示转换后的内容
-            console.log(`[✅ AdController] Converted content for ${original.id}:`, {
-              type: original.type,
-              contentKeys: Object.keys(content),
-              content: content,
-            });
 
             // 根据配置过滤内容（移除不需要显示的字段）
             content = this.filterAdContentByConfig(original.type, content);
@@ -789,10 +787,50 @@ export class AdController {
         }
       }
 
-      console.log(`[=====ADC_SUCCESS=====] #${requestId}`, {
-        adsCount: allAds.length,
-        duration: Date.now() - startTime,
-      });
+      // ========== 新增：构建便捷方法的闭包 ==========
+      // 创建一个转换函数，将 ApiAd 转换为 Ad（用于 getAdsBySlot）
+      const convertApiAdToAd = (apiAd: ApiAd, slotSuggestions?: SlotResponse['suggestions']): Ad => {
+        const original = apiAd.original || {};
+        const adapted = apiAd.adapted || {};
+        const tracking = apiAd.tracking || {};
+
+        let content = this.convertAdaptedContentToAdContent(original.type, adapted, tracking);
+        content = this.filterAdContentByConfig(original.type, content);
+
+        return {
+          id: original.id || '',
+          type: original.type as any,
+          score: original.score || 0,
+          source: 'external',
+          content: content,
+          tracking: {
+            click_url: tracking.clickUrl || tracking.click_url || '#',
+            impression_url: tracking.impressionUrl || tracking.impression_url || '#',
+          },
+          metadata: {
+            category: adapted.category || 'general',
+            ecpm: adapted.ecpm || 0,
+            source: 'external',
+          },
+          suggestions: slotSuggestions ? {
+            layout: slotSuggestions.layout,
+          } : undefined,
+        };
+      };
+
+      // getAdsBySlot: 按 slotId 获取转换后的广告列表
+      const getAdsBySlot = (slotId: string): Ad[] => {
+        const slot = slots.find(s => s.slotId === slotId);
+        if (!slot || slot.status !== 'filled' || !slot.ads) {
+          return [];
+        }
+        return slot.ads.map(apiAd => convertApiAdToAd(apiAd, slot.suggestions));
+      };
+
+      // getSlot: 获取原始 slot 响应
+      const getSlot = (slotId: string): SlotResponse | undefined => {
+        return slots.find(s => s.slotId === slotId);
+      };
 
       // ========== 新增：标记请求成功 ==========
       if (this.debounceManager) {
@@ -803,9 +841,12 @@ export class AdController {
 
       return {
         ads: allAds,
+        slots: slots,  // 保留原始 slots 数据
         isMock: false,
         error: null,
         duration: Date.now() - startTime,
+        getAdsBySlot: getAdsBySlot,
+        getSlot: getSlot,
       };
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
@@ -826,6 +867,119 @@ export class AdController {
         console.log(`[🔄 AdController #${requestId}] Falling back to mock ads`);
       }
       return this.fetchMockAds(context, formats);
+    }
+  }
+
+  /**
+   * 为 Web Search 获取广告（统一的获取方法）
+   *
+   * 与 fetchAds() 使用相同的底层逻辑，但：
+   * - 专门为 Web Search 场景优化
+   * - 接受 query 字符串而非完整的 context
+   * - 跳过频率控制（Web Search 自行控制展示时机）
+   *
+   * @param query - 搜索查询字符串
+   * @param options - 可选配置
+   * @returns 获取结果
+   *
+   * @example
+   * ```ts
+   * const result = await controller.fetchAdsForWebSearch('bluetooth headphones', {
+   *   formats: ['source'],
+   * });
+   * ```
+   */
+  async fetchAdsForWebSearch(
+    query: string,
+    options: FetchAdsOptions = {}
+  ): Promise<FetchAdsResult> {
+    const startTime = Date.now();
+
+    try {
+      // 默认 conversationContext
+      const defaultConversationContext: AdTriggerContext['conversationContext'] = {
+        sessionId: 'web-search',
+        messageCount: 1,
+        messages: [{ role: 'user', content: query }],
+      };
+
+      // 深度合并 conversationContext（而不是简单的 || 运算）
+      const conversationContext = options.context?.conversationContext
+        ? {
+            ...defaultConversationContext,
+            ...options.context.conversationContext,
+            // 确保 messages 字段存在
+            messages: options.context.conversationContext.messages ?? defaultConversationContext.messages,
+          }
+        : defaultConversationContext;
+
+      // 构建专用的 context
+      const context: AdTriggerContext = {
+        currentMessage: {
+          query: query,
+          response: '', // Web Search 阶段还没有 AI 回复
+          timestamp: Date.now(),
+          model: 'unknown',
+          provider: 'web-search',
+          isStreaming: false,
+        },
+        conversationContext,
+        userData: options.context?.userData,
+      };
+
+      // 确定 format（默认为 source）
+      const formats = options.formats ?? ['source'];
+
+      // 检查缓存（共享同一缓存层）
+      const cacheKey = this.getCacheKey(context, formats);
+      const cached = this.getFromCache(cacheKey);
+      if (cached) {
+        return {
+          ads: cached.ads,
+          slots: cached.slots || [],
+          isMock: cached.isMock,
+          error: null,
+          duration: Date.now() - startTime,
+          getAdsBySlot: () => cached.ads,
+          getSlot: () => undefined,
+        };
+      }
+
+      // 调用统一的 fetchRealAds 逻辑
+      // 注意：skipFrequencyCheck=false，但 shouldTrigger 会被跳过因为 response 为空
+      // 这是我们期望的行为 - Web Search 自行控制展示时机
+      const result = await this.fetchRealAds(context, formats, {
+        ...options,
+        placement: 'pre_request',
+      });
+
+      // 记录展示（如果有广告返回）
+      if (result.ads.length > 0) {
+        this.frequencyController.recordImpression();
+      }
+
+      // 缓存结果
+      if (result.error === null) {
+        this.addToCache(cacheKey, result.ads, false);
+      }
+
+      result.duration = Date.now() - startTime;
+
+      return result;
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error('[AdController] Error fetching ads for web search:', err);
+
+      // 失败时返回空结果，不降级到 mock（Web Search 不需要 mock）
+      return {
+        ads: [],
+        slots: [],
+        isMock: false,
+        error: err,
+        duration: Date.now() - startTime,
+        getAdsBySlot: () => [],
+        getSlot: () => undefined,
+      };
     }
   }
 
@@ -984,6 +1138,8 @@ export class AdController {
     formats: string[]
   ): Promise<FetchAdsResult> {
     const ads: Ad[] = [];
+    // 为 Mock 模式构建 slots 数据（保持结构一致）
+    const mockSlots: SlotResponse[] = [];
 
     // 为每个格式生成Mock广告
     for (const format of formats) {
@@ -992,14 +1148,60 @@ export class AdController {
         // 应用配置过滤（虽然 generateMockAd 已经考虑了配置，但这里再次应用确保一致性）
         mockAd.content = this.filterAdContentByConfig(format, mockAd.content);
         ads.push(mockAd);
+
+        // 同时构建对应的 slot
+        mockSlots.push({
+          slotId: `slot-${format}`,
+          status: 'filled',
+          ads: [{
+            original: {
+              id: mockAd.id,
+              type: format,
+              score: mockAd.score,
+            },
+            adapted: mockAd.content,
+            tracking: mockAd.tracking,
+          }],
+        });
       }
     }
 
+    // getAdsBySlot for Mock data
+    const getAdsBySlot = (slotId: string): Ad[] => {
+      const slot = mockSlots.find(s => s.slotId === slotId);
+      if (!slot || slot.status !== 'filled' || !slot.ads) {
+        return [];
+      }
+      return slot.ads.map((apiAd: ApiAd) => {
+        const ad: Ad = {
+          id: apiAd.original.id,
+          type: apiAd.original.type as any,
+          score: apiAd.original.score || 0,
+          source: 'mock',
+          content: apiAd.adapted,
+          tracking: apiAd.tracking,
+          metadata: {
+            category: 'mock',
+            ecpm: 0,
+            source: 'internal',
+          },
+        };
+        return ad;
+      });
+    };
+
+    const getSlot = (slotId: string): SlotResponse | undefined => {
+      return mockSlots.find(s => s.slotId === slotId);
+    };
+
     return {
       ads,
+      slots: mockSlots,
       isMock: true,
       error: null,
       duration: 0,
+      getAdsBySlot,
+      getSlot,
     };
   }
 

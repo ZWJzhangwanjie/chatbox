@@ -151,7 +151,7 @@ export type {
   MemoryInjectionConfig,
   MemoryStats,
   MemorySummary,
-} from 'src/shared/types'
+} from '../../shared/types'
 
 // 导出辅助函数
 export {
@@ -162,4 +162,4 @@ export {
   calculateExpiryDate,
   DEFAULT_EXTRACTION_CONFIG,
   DEFAULT_INJECTION_CONFIG,
-} from 'src/shared/types'
+} from '../../shared/types'

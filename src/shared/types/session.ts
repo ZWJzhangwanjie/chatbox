@@ -24,6 +24,12 @@ export const SearchResultItemSchema = z.object({
   link: z.string(),
   snippet: z.string(),
   rawContent: z.string().nullable().optional(),
+  // Ad markers (internal use, for distinguishing ads from regular search results)
+  _isAd: z.boolean().optional(),
+  _adId: z.string().optional(),
+  _type: z.string().optional(), // Ad format type: 'source' | 'suffix' | etc.
+  _clickUrl: z.string().optional(), // Click tracking link
+  _impressionUrl: z.string().optional(), // Impression tracking link
 })
 
 export const SearchResultSchema = z.object({

@@ -1,19 +1,31 @@
 /**
  * AI Ad Network - 统一广告数据 Hook
  *
- * 在 MessageList 层级统一获取所有广告格式，避免重复请求
- *
  * 核心思路：
- * 1. 每个 context 只发送一次 API 请求
- * 2. 请求包含所有启用的广告格式
- * 3. 各个 AdSlot 组件从缓存中读取数据
+ * 1. 调用方通过 formats 参数指定需要的广告格式
+ * 2. Hook 自动与配置取交集，只请求启用的格式
+ * 3. 按 formats 组合生成缓存键，支持不同场景独立缓存
+ *
+ * @example
+ * ```tsx
+ * // MessageList: 只获取 action_card 和 suffix
+ * useAds(context, { formats: ['action_card', 'suffix'] })
+ *
+ * // Sidebar: 只获取 static
+ * useAds(context, { formats: ['static'] })
+ *
+ * // Web Search: 只获取 source
+ * useAds(context, { formats: ['source'] })
+ * ```
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useAdConfigStore } from '../config/adConfigStore'
 import { AdController } from '../core/AdController'
-import type { Ad, AdTriggerContext } from '../core/types'
+import type { Ad, AdTriggerContext, SlotResponse } from '../core/types'
 import type { FetchAdsOptions } from '../core/AdController'
+import type { AdConfig } from '../config/adConfigSchema'
+import { isAdFormatMatch, getAdFormatAliases } from '../utils/adFormatUtils'
 
 // 新增：配置事件管理器
 import { AdConfigEventManager } from '../core/AdConfigEventManager'
@@ -23,10 +35,36 @@ import type { ConfigChangeEvent } from '../core/AdConfigEventManager'
 // 类型定义
 // ============================================================================
 
+/**
+ * 广告格式类型
+ */
+export type AdFormatType =
+  | 'action_card'
+  | 'suffix'
+  | 'followup'
+  | 'source'
+  | 'static'
+  | 'lead_gen'
+
+/**
+ * useAds Hook 选项
+ */
+export interface UseAdsOptions {
+  /** 要获取的广告格式（必填） */
+  formats: AdFormatType[]
+  /** 是否跳过频率检查（调试用，可选） */
+  skipFrequencyCheck?: boolean
+  /** 广告位置（可选） */
+  placement?: string
+}
+
 interface AdsCacheEntry {
   ads: Ad[]
+  slots?: SlotResponse[]
   timestamp: number
   isMock: boolean
+  getAdsBySlot?: (slotId: string) => Ad[]
+  getSlot?: (slotId: string) => SlotResponse | undefined
 }
 
 interface UseAdsResult {
@@ -34,6 +72,12 @@ interface UseAdsResult {
   getAds: (format: string) => Ad[]
   /** 所有广告 */
   allAds: Ad[]
+  /** Slot 原始响应 */
+  slots?: SlotResponse[]
+  /** 按 slotId 获取广告的便捷方法 */
+  getAdsBySlot?: (slotId: string) => Ad[]
+  /** 获取 slot 原始数据的便捷方法 */
+  getSlot?: (slotId: string) => SlotResponse | undefined
   /** 是否正在加载 */
   isLoading: boolean
   /** 是否有错误 */
@@ -62,34 +106,50 @@ export function clearAllAdsCache() {
 
 /**
  * 生成缓存键
- * 包含 sessionId、messageCount、query 和启用的格式信息
- * 这样当配置改变时，缓存键也会变化，确保使用新配置请求数据
+ * 包含 sessionId、messageCount、query 和实际请求的格式信息
+ * 不同 formats 组合会生成不同的缓存键，支持独立缓存
  */
-function generateCacheKey(context: AdTriggerContext, config: any): string {
+function generateCacheKey(
+  context: AdTriggerContext,
+  formats: string[]
+): string {
   const sessionId = context.conversationContext?.sessionId || 'default'
   const messageCount = context.conversationContext?.messageCount || 0
-  // 只使用 query 的前 50 个字符，不使用 response（因为 response 会在生成过程中变化）
+  // 只使用 query 的前 50 个字符
   const query = context.currentMessage.query.substring(0, 50)
 
-  // 获取启用的格式列表（作为缓存键的一部分）
-  const enabledFormats = [
-    config.formats.actionCard.enabled ? 'actionCard' : '',
-    config.formats.suffix.enabled ? 'suffix' : '',
-    config.formats.followup.enabled ? 'followup' : '',
-    config.formats.source.enabled ? 'source' : '',
-    config.formats.static.enabled ? 'static' : '',
-    config.formats.leadGen.enabled ? 'leadGen' : '',
-  ].filter(Boolean).sort().join(',')
+  // 使用实际请求的格式（排序后）作为缓存键的一部分
+  const formatsKey = formats.sort().join(',')
 
-  const key = `${sessionId}_${messageCount}_${query}_${enabledFormats}`.replace(/\s+/g, '_')
-  console.log('[🔑 generateCacheKey]', {
-    sessionId,
-    messageCount,
-    query: query.substring(0, 30),
-    enabledFormats,
-    fullKey: key,
-  })
+  const key = `${sessionId}_${messageCount}_${query}_${formatsKey}`.replace(/\s+/g, '_')
   return key
+}
+
+/**
+ * 格式名称到配置键的映射
+ * 将 API 格式名（如 action_card）转换为配置键（如 actionCard）
+ */
+function formatToConfigKey(format: string): keyof AdConfig['formats'] {
+  const map: Record<string, keyof AdConfig['formats']> = {
+    'action_card': 'actionCard',
+    'followup': 'followup',
+    'lead_gen': 'leadGen',
+  }
+  return map[format] || format as keyof AdConfig['formats']
+}
+
+/**
+ * 过滤出在配置中启用的格式
+ * 返回请求格式与配置启用格式的交集
+ */
+function filterEnabledFormats(
+  requestedFormats: string[],
+  config: AdConfig
+): string[] {
+  return requestedFormats.filter(format => {
+    const configKey = formatToConfigKey(format)
+    return config.formats[configKey]?.enabled ?? false
+  })
 }
 
 /**
@@ -182,98 +242,101 @@ setTimeout(() => {
 /**
  * 统一广告数据 Hook
  *
- * 在 MessageList 层级使用，统一获取所有启用的广告格式
+ * 调用方通过 formats 参数指定需要的广告格式，Hook 自动与配置取交集
  *
  * @param context - 广告触发上下文
+ * @param options - 选项，必须包含 formats
  * @returns 广告数据和操作方法
  *
  * @example
  * ```tsx
- * function MessageList({ messages, sessionId }) {
+ * // MessageList: 只获取 action_card 和 suffix
+ * function MessageList() {
  *   const context = buildAdContext(messages)
- *   const { getAds, isLoading } = useAds(context)
+ *   const { allAds, getAdsBySlot, isLoading } = useAds(context, {
+ *     formats: ['action_card', 'suffix']
+ *   })
+ *   // ...
+ * }
  *
- *   return messages.map(msg => (
- *     <Message key={msg.id}>
- *       {msg.content}
- *       <SuffixSlot />
- *       <ActionCardSlot />
- *     </Message>
- *   ))
+ * // Sidebar: 只获取 static
+ * function Sidebar() {
+ *   const context = buildSidebarAdContext()
+ *   const { allAds } = useAds(context, {
+ *     formats: ['static']
+ *   })
+ *   // ...
  * }
  * ```
  */
-export function useAds(context?: AdTriggerContext): UseAdsResult {
+export function useAds(
+  context?: AdTriggerContext,
+  options?: UseAdsOptions
+): UseAdsResult {
   const config = useAdConfigStore()
   const [isLoading, setIsLoading] = useState(false)
   const [isError, setIsError] = useState(false)
   const [allAds, setAllAds] = useState<Ad[]>([])
-
-  // 调试日志：allAds 变化
-  console.log('[🔄 useAds RENDER]', {
-    hasContext: !!context,
-    allAdsCount: allAds.length,
-    allAdsTypes: allAds.map(ad => ad.type),
-  })
+  const [slots, setSlots] = useState<SlotResponse[]>([])
+  const [getAdsBySlot, setGetAdsBySlot] = useState<(slotId: string) => Ad[]>(() => () => [])
+  const [getSlot, setGetSlot] = useState<(slotId: string) => SlotResponse | undefined>(() => () => undefined)
 
   const cacheKeyRef = useRef<string | null>(null)
   const hasFetchedRef = useRef(false)
 
+  // 计算实际要请求的格式（与配置取交集）
+  const requestedFormats = options?.formats ?? []
+  const enabledFormats = useMemo(
+    () => filterEnabledFormats(requestedFormats, config),
+    [requestedFormats, config]
+  )
+
   /**
    * 获取指定格式的广告
+   * 使用工具函数支持各种命名格式的兼容处理
    */
   const getAds = useCallback((format: string): Ad[] => {
-    console.log('[📦 useAds.getAds]', { format, totalAds: allAds.length })
+    // 使用工具函数获取该格式的所有别名
+    const aliases = getAdFormatAliases(format)
 
-    // 支持多种格式名称的映射
-    const formatAliases: Record<string, string[]> = {
-      actionCard: ['action_card', 'actionCard'],
-      suffix: ['suffix'],
-      followUp: ['followup', 'followUp'],
-      source: ['source', 'sponsoredSource'],
-      leadGen: ['lead_gen', 'leadGen'],
-      static: ['static'],
-    }
-
-    // 获取该格式的所有别名
-    const aliases = Object.entries(formatAliases).find(([key]) => key === format)?.[1] || [format]
-
-    // 使用别名过滤
-    return allAds.filter(ad => aliases.includes(ad.type))
+    // 使用工具函数进行匹配
+    return allAds.filter(ad => isAdFormatMatch(ad.type, aliases))
   }, [allAds])
 
   /**
    * 刷新广告
    */
   const refresh = useCallback(async () => {
-    if (!context) {
-      console.log('[❌ useAds.refresh] No context')
+    // 如果没有 context 或没有启用的格式，直接返回
+    if (!context || enabledFormats.length === 0) {
       return
     }
 
-    console.log('[🔄 useAds.refresh] Refreshing ads...')
     setIsLoading(true)
     setIsError(false)
 
     try {
       const controller = getController(config)
       const result = await controller.fetchAds(context, {
-        skipFrequencyCheck: config.debug,
+        formats: enabledFormats,
+        skipFrequencyCheck: options?.skipFrequencyCheck ?? config.debug,
+        placement: options?.placement,
       })
 
       setAllAds(result.ads)
+      setSlots(result.slots || [])
+      setGetAdsBySlot(() => result.getAdsBySlot || (() => []))
+      setGetSlot(() => result.getSlot || (() => undefined))
 
       // 更新缓存
-      const key = generateCacheKey(context, config)
+      const key = generateCacheKey(context, enabledFormats)
       adsCache.set(key, {
         ads: result.ads,
+        slots: result.slots,
         timestamp: Date.now(),
         isMock: result.isMock,
-      })
-
-      console.log('[✅ useAds.refresh] Refreshed', {
-        adsCount: result.ads.length,
-        isMock: result.isMock,
+        getAdsBySlot: result.getAdsBySlot,
+        getSlot: result.getSlot,
       })
     } catch (error) {
       console.error('[❌ useAds.refresh] Error:', error)
@@ -281,7 +344,7 @@ export function useAds(context?: AdTriggerContext): UseAdsResult {
     } finally {
       setIsLoading(false)
     }
-  }, [context, config])
+  }, [context, config, enabledFormats, options])
 
   /**
    * 清除缓存
@@ -295,48 +358,29 @@ export function useAds(context?: AdTriggerContext): UseAdsResult {
 
   // 主 effect：获取广告
   useEffect(() => {
-    console.log('[=====USEADS_START=====]', {
-      hasContext: !!context,
-      enabled: config.enabled,
-      query: context?.currentMessage?.query?.substring(0, 50),
-    })
-
-    if (!context) {
-      console.log('[=====USEADS_NO_CONTEXT=====]')
+    // 如果没有 context 或没有启用的格式，不请求
+    if (!context || enabledFormats.length === 0) {
+      setAllAds([])
+      setSlots([])
       return
     }
 
-    const cacheKey = generateCacheKey(context, config)
+    const cacheKey = generateCacheKey(context, enabledFormats)
     cacheKeyRef.current = cacheKey
 
     // 检查缓存
     const cached = adsCache.get(cacheKey)
-    console.log('[=====USEADS_CACHE_CHECK=====]', {
-      cacheKey,
-      hasCached: !!cached,
-      cacheValid: cached ? isCacheValid(cached) : false,
-      cachedAdsCount: cached?.ads.length || 0,
-      cacheAge: cached ? Date.now() - cached.timestamp : 0,
-      allCacheKeys: Array.from(adsCache.keys()),
-    })
 
     if (cached && isCacheValid(cached)) {
-      console.log('[=====USEADS_USING_CACHE=====]', {
-        adsCount: cached.ads.length,
-        age: Date.now() - cached.timestamp,
-      })
       setAllAds(cached.ads)
+      setSlots(cached.slots || [])
+      setGetAdsBySlot(() => cached.getAdsBySlot || (() => []))
+      setGetSlot(() => cached.getSlot || (() => undefined))
       hasFetchedRef.current = true
       return
     }
 
     // 没有缓存或缓存过期，发送请求
-    console.log('[=====USEADS_FETCHING=====]', {
-      cacheKey,
-      hasCached: !!cached,
-      cacheValid: cached ? isCacheValid(cached) : false,
-    })
-
     const fetchController = new AbortController()
     const timeoutId = setTimeout(() => fetchController.abort(), 30000) // 30 秒超时
 
@@ -347,41 +391,30 @@ export function useAds(context?: AdTriggerContext): UseAdsResult {
       try {
         const controller = getController(config)
         const result = await controller.fetchAds(context, {
-          skipFrequencyCheck: config.debug,
+          formats: enabledFormats,
+          skipFrequencyCheck: options?.skipFrequencyCheck ?? config.debug,
+          placement: options?.placement,
         })
 
         setAllAds(result.ads)
-
-        console.log('[=====USEADS_SET_ALLADS=====]', {
-          adsCount: result.ads.length,
-          types: result.ads.map(ad => ad.type),
-        })
+        setSlots(result.slots || [])
+        setGetAdsBySlot(() => result.getAdsBySlot || (() => []))
+        setGetSlot(() => result.getSlot || (() => undefined))
 
         // 更新缓存
         adsCache.set(cacheKey, {
           ads: result.ads,
+          slots: result.slots,
           timestamp: Date.now(),
           isMock: result.isMock,
-        })
-
-        console.log('[💾 useAds] Cache SET', {
-          cacheKey,
-          adsCount: result.ads.length,
-          totalCacheKeys: adsCache.size,
-          allKeys: Array.from(adsCache.keys()),
+          getAdsBySlot: result.getAdsBySlot,
+          getSlot: result.getSlot,
         })
 
         hasFetchedRef.current = true
-
-        console.log('[=====USEADS_FETCH_SUCCESS=====]', {
-          adsCount: result.ads.length,
-          isMock: result.isMock,
-          formats: result.ads.map(ad => ad.type),
-          ads: result.ads.map(ad => ({ id: ad.id, type: ad.type, score: ad.score })),
-        })
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-          console.log('[⏱️ useAds] Request timeout')
+          console.error('[⏱️ useAds] Request timeout')
         } else {
           console.error('[❌ useAds] Error:', error)
           setIsError(true)
@@ -398,11 +431,14 @@ export function useAds(context?: AdTriggerContext): UseAdsResult {
       fetchController.abort()
       clearTimeout(timeoutId)
     }
-  }, [context, config])
+  }, [context, config, enabledFormats, options])
 
   return {
     getAds,
     allAds,
+    slots,
+    getAdsBySlot,
+    getSlot,
     isLoading,
     isError,
     refresh,
@@ -415,4 +451,5 @@ export function useAds(context?: AdTriggerContext): UseAdsResult {
 // ============================================================================
 
 export default useAds
-export { clearAllAdsCache }
+export { clearAllAdsCache, getController }
+export type { AdFormatType, UseAdsOptions }

@@ -31,9 +31,6 @@ export {
   // 常量
   SENSITIVE_PATTERNS,
   SENSITIVE_FIELDS,
-
-  // 默认导出
-  default,
 } from './privacy';
 
 export type {
@@ -43,7 +40,43 @@ export type {
 } from './privacy';
 
 // ============================================================================
+// 广告格式类型映射工具
+// ============================================================================
+
+export {
+  // 标准化
+  normalizeAdFormat,
+  normalizeAdFormats,
+
+  // 别名管理
+  getAdFormatAliases,
+
+  // 比较和匹配
+  isSameAdFormat,
+  isAdFormatMatch,
+  isValidAdFormat,
+
+  // Slot 相关
+  getSlotId,
+  extractFormatFromSlotId,
+
+  // 工具
+  getAllStandardFormats,
+  getAdFormatDebugInfo,
+
+  // 常量
+  AD_FORMAT_ALIASES,
+} from './adFormatUtils';
+
+export type {
+  StandardAdFormat,
+  AdFormatAlias,
+} from './adFormatUtils';
+
+// ============================================================================
 // 重新导出默认
 // ============================================================================
 
 export { default as privacy } from './privacy';
+export { default as adFormatUtils } from './adFormatUtils';
+

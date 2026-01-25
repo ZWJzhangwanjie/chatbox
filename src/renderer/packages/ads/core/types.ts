@@ -271,6 +271,177 @@ export interface AdSuggestions {
   [key: string]: unknown;
 }
 
+// ============================================================================
+// Slot-Based 响应结构（新增）
+// ============================================================================
+
+/**
+ * Slot 级别的建议信息
+ */
+export interface SlotSuggestions {
+  /** 建议的布局方式 */
+  layout?: string;
+  /** 建议的样式变体 */
+  variant?: string;
+  /** 建议的展示位置 */
+  position?: number;
+  /** 展示时机（用于 lead_gen） */
+  timing?: {
+    showAfter?: number;
+    requiresInterest?: string[];
+  };
+  /** 内容风格建议（用于 suffix/followup） */
+  tone?: 'casual' | 'professional' | 'friendly' | 'technical';
+}
+
+/**
+ * Slot 响应状态
+ *
+ * 注意：API 返回的是 'no_fill'，但为了向后兼容，代码中应该同时支持两种状态
+ */
+export type SlotStatus = 'filled' | 'empty' | 'no_fill' | 'error';
+
+/**
+ * Slot 响应状态（旧版，用于向后兼容）
+ * @deprecated 使用 SlotStatus 代替
+ */
+export type LegacySlotStatus = 'filled' | 'empty' | 'error';
+
+/**
+ * 单个 Slot 的响应
+ *
+ * 对应 API 返回的 slots 数组中的单个 slot
+ * 支持 v2 API 的额外字段
+ */
+export interface SlotResponse {
+  /** Slot ID（与请求中的 slotId 对应） */
+  slotId: string;
+  /** Slot 状态 */
+  status: SlotStatus;
+  /** 错误信息（仅当 status='error' 时） */
+  error?: string;
+  /** 该 slot 的广告列表 */
+  ads?: ApiAd[];
+  /** 该 slot 的建议信息 */
+  suggestions?: SlotSuggestions;
+  /** 该 slot 的元数据 */
+  metadata?: {
+    /** 决策理由（可以是字符串或数组） */
+    reasoning?: string | Array<{
+      reason: string;
+      confidence: number;
+    }>;
+    /** 置信度 (0-1) */
+    confidence?: number;
+    /** v2 新增：决策建议 */
+    suggestions?: {
+      layout?: string;
+      variant?: string;
+      position?: number;
+      timing?: {
+        showAfter?: number;
+        requiresInterest?: string[];
+      };
+      tone?: 'casual' | 'professional' | 'friendly' | 'technical';
+    };
+  };
+}
+
+/**
+ * API 返回的单个广告
+ *
+ * 根据 API 文档 v2，adapted 字段包含更多结构化信息
+ */
+export interface ApiAd {
+  /** 原始广告数据 */
+  original: {
+    id: string;
+    type: string;
+    score?: number;
+  };
+  /** 转换后的广告数据（支持 v2 API 结构） */
+  adapted: {
+    title?: string;
+    body?: string;
+    image?: string;
+    link?: string;
+    url?: string;
+    price?: string;
+    rating?: number;
+    cta_text?: string;
+    category?: string;
+
+    // v2 API 新增字段（支持结构化数据）
+    ctaText?: string;           // 行动号召文本（驼峰命名）
+    brand?: string;            // 品牌名
+    styling?: {                // 样式建议
+      backgroundColor?: string;
+      textColor?: string;
+      accentColor?: string;
+      borderRadius?: string;
+      padding?: string;
+    };
+
+    [key: string]: unknown;
+  };
+  /** 追踪信息（支持 v2 API 结构） */
+  tracking: {
+    clickUrl?: string;         // 驼峰命名（v2）
+    click_url?: string;        // 下划线命名（兼容）
+    impressionUrl?: string;    // 驼峰命名（v2）
+    impression_url?: string;   // 下划线命名（兼容）
+    viewToken?: string;        // 视图令牌（v2 新增）
+  };
+}
+
+/**
+ * Slot-Based API 响应
+ *
+ * 对应 v2 API 的实际返回格式
+ */
+export interface AdApiResponseWithSlots {
+  /** 是否成功 */
+  success: boolean;
+  /** 数据 */
+  data?: {
+    /** v2 新增：请求唯一标识 */
+    requestId?: string;
+    /** v2 新增：响应时间戳 */
+    timestamp?: number;
+    /** v2 新增：识别的意图 */
+    intent?: {
+      type: 'shopping' | 'lead_gen' | 'software' | 'content' | 'generic';
+      confidence: number;
+      keywords: string[];
+      reasoning?: string;
+    };
+    /** Slot 数组 */
+    slots: SlotResponse[];
+    /** v2 新增：全局建议 */
+    globalSuggestions?: {
+      priority?: string[];
+      hideIfNoFill?: string[];
+    };
+    /** v2 新增：响应元数据 */
+    metadata?: {
+      detectedStage?: 'pre_request' | 'post_response' | 'unknown';
+      availableContext?: {
+        hasQuery: boolean;
+        hasResponse: boolean;
+        hasHistory: boolean;
+        hasProfile: boolean;
+        historyLength?: number;
+      };
+      reasoning?: string;
+    };
+  };
+  /** 错误信息 */
+  error?: {
+    code: string;
+    message: string;
+  };
+}
+
 /**
  * 单个广告
  */

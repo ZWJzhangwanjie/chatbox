@@ -118,10 +118,6 @@ export class DebounceCacheManager {
     private readonly debug: boolean = false
   ) {
     this.startCleanupScheduler();
-    console.log('[DebounceCacheManager] Initialized', {
-      debounceMs,
-      cleanupIntervalMs,
-    });
   }
 
   // ========== 公共方法 ==========

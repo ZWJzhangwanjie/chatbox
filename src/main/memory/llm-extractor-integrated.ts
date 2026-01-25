@@ -4,7 +4,7 @@
  * 使用项目现有的 AI 基础设施从对话中智能提取用户记忆
  */
 
-import type { Message } from 'src/shared/types'
+import type { Message } from '../../shared/types'
 import type {
   Memory,
   MemoryType,
@@ -12,8 +12,8 @@ import type {
   MemoryPriority,
   MemoryExtraction,
   ExtractionConfig,
-} from 'src/shared/types'
-import type { ModelMessage } from 'src/shared/types'
+} from '../../shared/types'
+import type { ModelMessage } from '../../shared/types'
 import { getModel } from '../../shared/models'
 import { createModelDependencies } from '../adapters'
 import { getSettings } from '../store-node'
@@ -23,7 +23,7 @@ import { v4 as uuidv4 } from 'uuid'
 import {
   generateMemoryId,
   DEFAULT_EXTRACTION_CONFIG,
-} from 'src/shared/types'
+} from '../../shared/types'
 import { deduplicateMemories, getAllMemories, addMemories } from './store'
 
 const log = getLogger('memory:llm-extractor')

@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAdConfigStore } from '../config/adConfigStore';
 import { AdController } from '../core/AdController';
-import type { AdTriggerContext, Ad } from '../core/types';
+import type { AdTriggerContext, Ad, SlotResponse } from '../core/types';
 import type { FetchAdsOptions } from '../core/AdController';
 
 // ============================================================================
@@ -21,8 +21,10 @@ import type { FetchAdsOptions } from '../core/AdController';
  * 广告数据状态
  */
 export interface AdDataState {
-  /** 广告列表 */
+  /** 广告列表（扁平化，向后兼容） */
   ads: Ad[];
+  /** Slot 原始响应（新增） */
+  slots?: SlotResponse[];
   /** 是否正在加载 */
   isLoading: boolean;
   /** 是否有错误 */
@@ -33,6 +35,10 @@ export interface AdDataState {
   isMock: boolean;
   /** 上次更新时间 */
   lastUpdated: number | null;
+  /** 按 slotId 获取广告的便捷方法（新增） */
+  getAdsBySlot?: (slotId: string) => Ad[];
+  /** 获取 slot 原始数据的便捷方法（新增） */
+  getSlot?: (slotId: string) => SlotResponse | undefined;
 }
 
 /**
@@ -58,11 +64,14 @@ export type UseAdDataReturn = AdDataState & AdDataActions;
 
 const defaultState: AdDataState = {
   ads: [],
+  slots: [],
   isLoading: false,
   isError: false,
   error: null,
   isMock: false,
   lastUpdated: null,
+  getAdsBySlot: () => [],
+  getSlot: () => undefined,
 };
 
 // ============================================================================
@@ -118,15 +127,6 @@ export function useAdData(
   // 获取配置
   const config = useAdConfigStore();
 
-  // 调试日志：useAdData hook 被调用
-  console.log('[🔌 useAdData HOOK CALLED]', {
-    hasContext: !!context,
-    contextQuery: context?.currentMessage?.query?.substring(0, 50),
-    contextResponse: context?.currentMessage?.response?.substring(0, 50),
-    optionsFormats: options?.formats,
-    configEnabled: config.enabled,
-  })
-
   // 状态
   const [state, setState] = useState<AdDataState>(defaultState);
 
@@ -162,43 +162,29 @@ export function useAdData(
     const currentContext = contextRef.current;
     const controller = controllerRef.current;
 
-    console.log('[🚀 useAdData fetchAds CALLED]', {
-      hasContext: !!currentContext,
-      hasController: !!controller,
-      query: currentContext?.currentMessage?.query?.substring(0, 50),
-      formats: optionsRef.current?.formats,
-    });
-
     if (!currentContext || !controller) {
-      console.log('[❌ fetchAds ABORTED]', 'Missing context or controller');
       return;
     }
 
     // 开始加载
-    console.log('[⏳ fetchAds STARTING]');
     setState((prev) => ({ ...prev, isLoading: true, isError: false, error: null }));
 
     try {
       const result = await controller.fetchAds(currentContext, optionsRef.current);
 
-      console.log('[✅ fetchAds SUCCESS]', {
-        adsCount: result.ads.length,
-        isMock: result.isMock,
-        duration: result.duration,
-        hasError: !!result.error,
-      });
-
       setState({
         ads: result.ads,
+        slots: result.slots,
         isLoading: false,
         isError: result.error !== null,
         error: result.error,
         isMock: result.isMock,
         lastUpdated: Date.now(),
+        getAdsBySlot: result.getAdsBySlot,
+        getSlot: result.getSlot,
       });
     } catch (error) {
       const err = error instanceof Error ? error : new Error(String(error));
-      console.log('[❌ fetchAds ERROR]', err.message);
 
       setState({
         ads: [],
@@ -235,13 +221,6 @@ export function useAdData(
 
   // 自动获取（当context存在时）
   useEffect(() => {
-    console.log('[🔄 useAdData EFFECT]', {
-      hasContext: !!context,
-      enabled: config.enabled,
-      query: context?.currentMessage?.query?.substring(0, 50),
-      willFetch: !!(context && config.enabled),
-    });
-
     if (context && config.enabled) {
       fetchAds();
     }

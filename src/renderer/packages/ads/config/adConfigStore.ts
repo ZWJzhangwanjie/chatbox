@@ -127,18 +127,18 @@ export const useAdConfigStore = create<AdConfigState>()(
             mixPosition: 2,
           },
           source: {
-            enabled: false,
+            enabled: true,  // 默认启用 source 格式（搜索结果广告）
             variant: 'card',
-            frequency: 5,
-            maxPerSession: 3,
-            mixPosition: 1,
+            frequency: 1,  // 每次搜索都显示（测试用）
+            maxPerSession: 10,  // 会话最多显示 10 次
+            mixPosition: 1,  // 插入到第 1 个位置
             showSponsoredLabel: true,
           },
           static: {
             enabled: false,
             placement: 'sidebar',
-            width: 300,
-            height: 250,
+            width: 220,
+            height: 100,
             refreshInterval: 0,
             dismissible: true,
           },
@@ -441,6 +441,87 @@ export const initAdConfigStore = async (): Promise<void> => {
 // ============================================================================
 // 订阅辅助函数
 // ============================================================================
+
+/**
+ * 🔧 调试辅助函数 - 在控制台中快速启用 source 广告
+ *
+ * 使用方法：
+ * 1. 打开浏览器控制台
+ * 2. 输入: enableSourceAds()
+ * 3. 刷新页面并重新进行 Web 搜索
+ */
+export function enableSourceAds() {
+  const state = useAdConfigStore.getState();
+  console.log('[🔧 Debug] Current config:', {
+    globalEnabled: state.enabled,
+    sourceEnabled: state.formats.source?.enabled,
+  });
+
+  // 启用全局广告和 source 格式
+  state.updateConfig({
+    enabled: true,
+  });
+  state.updateFormatConfig('source', {
+    enabled: true,
+    frequency: 1,
+    maxPerSession: 10,
+    mixPosition: 1,
+    showSponsoredLabel: true,
+  });
+
+  console.log('[🔧 Debug] ✅ Source ads enabled! Config:', {
+    globalEnabled: state.enabled,
+    sourceEnabled: state.formats.source?.enabled,
+  });
+}
+
+/**
+ * 🔧 调试辅助函数 - 显示当前广告配置
+ */
+export function showAdConfig() {
+  const state = useAdConfigStore.getState();
+  console.log('[🔧 Debug] Current ad config:', {
+    // 全局配置
+    globalEnabled: state.enabled,
+    debugMode: state.debug,
+
+    // Source 格式配置
+    source: {
+      enabled: state.formats.source?.enabled,
+      frequency: state.formats.source?.frequency,
+      maxPerSession: state.formats.source?.maxPerSession,
+      mixPosition: state.formats.source?.mixPosition,
+      showSponsoredLabel: state.formats.source?.showSponsoredLabel,
+    },
+
+    // 其他格式
+    actionCardEnabled: state.formats.actionCard?.enabled,
+    suffixEnabled: state.formats.suffix?.enabled,
+  });
+}
+
+/**
+ * 🔧 调试辅助函数 - 重置频率计数器
+ */
+export function resetAdFrequency() {
+  const keys = Object.keys(sessionStorage).filter(k => k.startsWith('ads_session_count_'));
+  keys.forEach(key => {
+    sessionStorage.removeItem(key);
+  });
+  console.log('[🔧 Debug] ✅ Ad frequency counters reset. Removed keys:', keys);
+  return keys.length;
+}
+
+// 将调试函数暴露到 window 对象（仅在开发模式）
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  (window as any).enableSourceAds = enableSourceAds;
+  (window as any).showAdConfig = showAdConfig;
+  (window as any).resetAdFrequency = resetAdFrequency;
+  console.log('[🔧 Debug] Ad debugging functions available:');
+  console.log('  - enableSourceAds()   : 启用 source 广告');
+  console.log('  - showAdConfig()      : 显示当前广告配置');
+  console.log('  - resetAdFrequency()  : 重置频率计数器');
+}
 
 /**
  * 订阅配置变化

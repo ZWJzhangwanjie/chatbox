@@ -583,6 +583,117 @@
 }
 
 /* ============================================================================
+   Static 广告样式（静态横幅）
+   ============================================================================ */
+
+.ad-slot-static {
+  margin: 8px 0;
+}
+
+/* ===== Static 广告尺寸强制覆盖 ===== */
+/* 使用 CSS 变量和 !important 强制覆盖 SDK 组件的内联样式 */
+.static-ad-size-wrapper .ad-component {
+  width: var(--static-ad-width, 220px) !important;
+  height: var(--static-ad-height, 100px) !important;
+}
+
+/* ===== Static - sidebar placement (侧边栏样式) ===== */
+.ad-slot-static[data-placement="sidebar"] {
+  width: 100%;
+  max-width: 300px;
+  margin: 12px auto;
+}
+
+.ad-slot-static[data-placement="sidebar"] .ad-component-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ad-slot-static[data-placement="sidebar"] .ad-component-wrapper > * {
+  background: var(--chatbox-background-primary) !important;
+  border: 1px solid var(--chatbox-border-primary) !important;
+  border-radius: var(--chatbox-radius-md) !important;
+  overflow: hidden !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+  transition: all 0.2s ease !important;
+}
+
+.ad-slot-static[data-placement="sidebar"] .ad-component-wrapper > *:hover {
+  border-color: #a855f7 !important;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.12) !important;
+}
+
+/* ===== Static - header placement (顶部横幅样式) ===== */
+.ad-slot-static[data-placement="header"] {
+  width: 100%;
+  max-width: 728px;
+  height: 90px;
+  margin: 0 auto 8px;
+  border-bottom: 1px solid var(--chatbox-border-primary);
+}
+
+.ad-slot-static[data-placement="header"] .ad-component-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ad-slot-static[data-placement="header"] .ad-component-wrapper > * {
+  background: var(--chatbox-background-primary) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* ===== Static - footer placement (底部横幅样式) ===== */
+.ad-slot-static[data-placement="footer"] {
+  width: 100%;
+  max-width: 728px;
+  height: 90px;
+  margin: 8px auto 0;
+  border-top: 1px solid var(--chatbox-border-primary);
+}
+
+.ad-slot-static[data-placement="footer"] .ad-component-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.ad-slot-static[data-placement="footer"] .ad-component-wrapper > * {
+  background: var(--chatbox-background-primary) !important;
+  border: none !important;
+  border-radius: var(--chatbox-radius-sm) !important;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* ===== Static 广告通用文字样式 ===== */
+.ad-slot-static .ad-text-primary,
+.ad-slot-static [class*="title"],
+.ad-slot-static h1, .ad-slot-static h2, .ad-slot-static h3,
+.ad-slot-static [class*="ad-text-primary"] {
+  color: var(--chatbox-tint-primary) !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+.ad-slot-static .ad-text-secondary,
+.ad-slot-static [class*="description"],
+.ad-slot-static [class*="body"],
+.ad-slot-static p,
+.ad-slot-static [class*="ad-text-secondary"] {
+  color: var(--chatbox-tint-secondary) !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+/* ============================================================================
    嵌入到文档/代码块内的特殊处理
    ============================================================================ */
 

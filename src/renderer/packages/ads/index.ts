@@ -17,6 +17,12 @@
  */
 
 // ============================================================================
+// 导入样式
+// ============================================================================
+
+import './styles/ads.css';
+
+// ============================================================================
 // 配置 Schema 和类型
 // ============================================================================
 
@@ -89,6 +95,10 @@ export { default as useAdConfigHooks } from './hooks/useAdConfig';
 // 工程师B提供的广告Hooks
 export { useAdTrigger, useAdData, useAdList, useAdLoading } from './hooks';
 export type { UseAdTriggerReturn, UseAdDataReturn, AdDataState, AdDataActions } from './hooks';
+
+// 统一广告数据 Hook（按需获取格式）
+export { useAds, clearAllAdsCache, getController } from './hooks/useAds';
+export type { AdFormatType, UseAdsOptions } from './hooks/useAds';
 
 // ============================================================================
 // 核心逻辑层 (工程师B)

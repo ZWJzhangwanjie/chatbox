@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import type { Message } from 'src/shared/types'
+import type { Message } from '../../shared/types'
 import type {
   Memory,
   MemoryExtraction,
@@ -7,7 +7,7 @@ import type {
   MemoryStats,
   MemorySummary,
   ExtractionConfig,
-} from 'src/shared/types'
+} from '../../shared/types'
 import { sentry } from '../adapters/sentry'
 import { getLogger } from '../util'
 import {
@@ -239,17 +239,30 @@ export function registerMemoryHandlers() {
     'memory:extractFromSession',
     async (_event, sessionId: string, messages: Message[], config: ExtractionConfig = {}) => {
       try {
-        log.debug('[IPC] memory:extractFromSession', sessionId)
+        log.info('[IPC] ===== memory:extractFromSession =====')
+        log.info('[IPC] Session:', sessionId)
+        log.info('[IPC] Message count:', messages.length)
         const result = await extractMemoriesFromSession(sessionId, messages, config)
+
+        log.info('[IPC] 提取结果:', {
+          memoryCount: result.memories.length,
+          confidence: result.confidence,
+          reasoning: result.reasoning
+        })
+
         // 异步生成嵌入
         if (result.memories.length > 0) {
           embedMemories(result.memories).catch((err) => {
             log.warn('[IPC] Failed to embed extracted memories:', err)
           })
+        } else {
+          log.warn('[IPC] 没有提取到任何记忆')
         }
+
         return result
       } catch (error: any) {
-        log.error('[IPC] memory:extractFromSession failed', error)
+        log.error('[IPC] memory:extractFromSession failed:', error.message)
+        log.error('[IPC] Error stack:', error.stack)
         sentry.withScope((scope) => {
           scope.setTag('component', 'memory-ipc')
           scope.setTag('operation', 'extract_from_session')

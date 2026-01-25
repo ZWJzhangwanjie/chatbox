@@ -171,9 +171,9 @@ export function getDefaultAdConfig(): AdConfig {
         enabled: false,
         // 侧边栏位置
         placement: 'sidebar',
-        // 300x250 标准尺寸
-        width: 300,
-        height: 250,
+        // 220x100 适配侧边栏宽度
+        width: 220,
+        height: 100,
         // 不自动刷新
         refreshInterval: 0,
         // 允许关闭
@@ -214,8 +214,8 @@ export function getDefaultAdConfig(): AdConfig {
       requireConsent: true,
       // 不保留数据（0 天）
       dataRetentionDays: 0,
-      // 只允许收集 query 和 response
-      allowedDataTypes: ['query', 'response'],
+      // 允许收集的数据类型（包含记忆和画像）
+      allowedDataTypes: ['query', 'response', 'context', 'memory', 'profile'],
     },
 
     // ========== 调试模式 ==========

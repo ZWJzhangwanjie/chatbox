@@ -45,7 +45,15 @@ async function handleSearchResult(
   onResultChange: OnResultChange,
   params: { providerOptions?: ProviderOptions }
 ) {
+  console.log('[🔍 Web Search Debug] handleSearchResult called:', {
+    toolName,
+    query: result.query,
+    resultCount: result.searchResults?.length,
+    type: result.type,
+  })
+
   if (!result?.searchResults?.length || result.type === 'none') {
+    console.log('[🔍 Web Search Debug] No search results, proceeding without tool-call display')
     return model.chat(coreMessages, { signal: controller.signal, onResultChange })
   }
 
@@ -57,6 +65,10 @@ async function handleSearchResult(
     args: { query: result.query },
     result,
   }
+  console.log('[🔍 Web Search Debug] Creating tool-call part:', {
+    toolCallId: toolCallPart.toolCallId,
+    hasResult: !!toolCallPart.result,
+  })
   onResultChange({ contentParts: [toolCallPart] })
 
   const messagesWithResults =
@@ -130,6 +142,18 @@ export async function streamText(
   const needFileToolSet = hasFileOrLink && model.isSupportToolUse()
   const kbNotSupported = knowledgeBase && !model.isSupportToolUse('knowledge-base')
   const webNotSupported = webBrowsing && !model.isSupportToolUse('web-browsing')
+
+  console.log('[🔍 Web Search Debug] Model tool use support:', {
+    webBrowsing,
+    knowledgeBase: !!knowledgeBase,
+    hasFileOrLink,
+    needFileToolSet,
+    kbNotSupported,
+    webNotSupported,
+    modelId: model.modelId,
+    isSupportToolUse: model.isSupportToolUse(),
+    isSupportToolUseWebBrowsing: model.isSupportToolUse('web-browsing'),
+  })
 
   // 1. inject system prompt for tool use
   let toolSetInstructions = ''
@@ -264,11 +288,20 @@ export async function streamText(
     let tools: ToolSet = {
       ...mcpController.getAvailableTools(),
     }
+    console.log('[🔍 Web Search Debug] Constructing tool set:', {
+      webBrowsing,
+      toolsCount: Object.keys(tools).length,
+      hasWebSearchTool: !!tools.web_search,
+    })
     if (webBrowsing) {
       tools.web_search = webSearchTool
       if (settingActions.isPro()) {
         tools.parse_link = parseLinkTool
       }
+      console.log('[🔍 Web Search Debug] Web search tools registered:', {
+        webSearch: !!tools.web_search,
+        parseLink: !!tools.parse_link,
+      })
     }
     if (knowledgeBase) {
       tools = {

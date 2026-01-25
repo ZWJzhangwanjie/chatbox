@@ -5,8 +5,11 @@
  * 这些 hooks 基于 adConfigStore 实现，提供更友好的 API
  */
 
-import { useAdConfigStore } from '../config/adConfigStore';
+import { useAdConfigStore as _useAdConfigStore } from '../config/adConfigStore';
 import type { AdConfig, AdFormat, AdPlacement } from '../index';
+
+// Re-export the store hook for advanced usage (using renamed import)
+export const useAdConfigStore = _useAdConfigStore;
 
 // ============================================================================
 // 基础配置 Hooks
@@ -22,7 +25,7 @@ import type { AdConfig, AdFormat, AdPlacement } from '../index';
  * console.log(config.enabled);
  */
 export function useAdConfig(): AdConfig {
-  return useAdConfigStore((state) => state);
+  return _useAdConfigStore((state) => state);
 }
 
 /**
@@ -35,7 +38,7 @@ export function useAdConfig(): AdConfig {
  * updateConfig({ enabled: true });
  */
 export function useAdConfigUpdater(): (updates: Partial<AdConfig>) => void {
-  return useAdConfigStore((state) => state.updateConfig);
+  return _useAdConfigStore((state) => state.updateConfig);
 }
 
 /**
@@ -50,7 +53,7 @@ export function useAdConfigUpdater(): (updates: Partial<AdConfig>) => void {
  * }
  */
 export function useIsAdEnabled(): boolean {
-  return useAdConfigStore((state) => state.isEnabled());
+  return _useAdConfigStore((state) => state.isEnabled());
 }
 
 /**
@@ -65,7 +68,7 @@ export function useIsAdEnabled(): boolean {
  * }
  */
 export function useIsDebugMode(): boolean {
-  return useAdConfigStore((state) => state.isDebugMode());
+  return _useAdConfigStore((state) => state.isDebugMode());
 }
 
 // ============================================================================
@@ -82,7 +85,7 @@ export function useIsDebugMode(): boolean {
  * console.log(apiConfig.baseUrl);
  */
 export function useApiConfig() {
-  return useAdConfigStore((state) => state.api);
+  return _useAdConfigStore((state) => state.api);
 }
 
 /**
@@ -113,7 +116,7 @@ export function useIsApiConfigured(): boolean {
  * }
  */
 export function useUseMockMode(): boolean {
-  return useAdConfigStore((state) => state.api.useMock);
+  return _useAdConfigStore((state) => state.api.useMock);
 }
 
 // ============================================================================
@@ -130,7 +133,7 @@ export function useUseMockMode(): boolean {
  * console.log(dataCollection.includeQuery);
  */
 export function useDataCollectionConfig() {
-  return useAdConfigStore((state) => state.dataCollection);
+  return _useAdConfigStore((state) => state.dataCollection);
 }
 
 /**
@@ -145,7 +148,7 @@ export function useDataCollectionConfig() {
  */
 export function useShouldCollectData(dataType: keyof AdConfig['dataCollection']): boolean {
   const config = useDataCollectionConfig();
-  const privacyAllowed = useAdConfigStore((state) =>
+  const privacyAllowed = _useAdConfigStore((state) =>
     state.privacy.allowedDataTypes.includes(dataType as any)
   );
   return config[dataType] === true && privacyAllowed;
@@ -165,7 +168,7 @@ export function useShouldCollectData(dataType: keyof AdConfig['dataCollection'])
  * console.log(activeFormats); // ['action_card', 'suffix']
  */
 export function useActiveFormats(): AdFormat[] {
-  return useAdConfigStore((state) => state.getActiveFormats()) as AdFormat[];
+  return _useAdConfigStore((state) => state.getActiveFormats()) as AdFormat[];
 }
 
 /**
@@ -178,7 +181,7 @@ export function useActiveFormats(): AdFormat[] {
  * const isActionCardEnabled = useIsFormatEnabled('action_card');
  */
 export function useIsFormatEnabled(format: keyof AdConfig['formats']): boolean {
-  return useAdConfigStore((state) => state.isFormatEnabled(format));
+  return _useAdConfigStore((state) => state.isFormatEnabled(format));
 }
 
 /**
@@ -192,7 +195,7 @@ export function useIsFormatEnabled(format: keyof AdConfig['formats']): boolean {
  * console.log(actionCardConfig.variant);
  */
 export function useFormatConfig<T extends keyof AdConfig['formats']>(format: T) {
-  return useAdConfigStore((state) => state.formats[format]);
+  return _useAdConfigStore((state) => state.formats[format]);
 }
 
 /**
@@ -205,7 +208,7 @@ export function useFormatConfig<T extends keyof AdConfig['formats']>(format: T) 
  * console.log(allFormats.actionCard.enabled);
  */
 export function useAllFormatsConfig() {
-  return useAdConfigStore((state) => state.formats);
+  return _useAdConfigStore((state) => state.formats);
 }
 
 /**
@@ -218,7 +221,7 @@ export function useAllFormatsConfig() {
  * toggleFormat('actionCard'); // 切换 action_card 的启用状态
  */
 export function useToggleFormat(): (format: keyof AdConfig['formats']) => void {
-  return useAdConfigStore((state) => state.toggleFormat);
+  return _useAdConfigStore((state) => state.toggleFormat);
 }
 
 // ============================================================================
@@ -235,7 +238,7 @@ export function useToggleFormat(): (format: keyof AdConfig['formats']) => void {
  * console.log(privacy.enabled);
  */
 export function usePrivacyConfig() {
-  return useAdConfigStore((state) => state.privacy);
+  return _useAdConfigStore((state) => state.privacy);
 }
 
 /**
@@ -247,7 +250,7 @@ export function usePrivacyConfig() {
  * const privacyEnabled = useIsPrivacyEnabled();
  */
 export function useIsPrivacyEnabled(): boolean {
-  return useAdConfigStore((state) => state.privacy.enabled);
+  return _useAdConfigStore((state) => state.privacy.enabled);
 }
 
 /**
@@ -259,7 +262,7 @@ export function useIsPrivacyEnabled(): boolean {
  * const needConsent = useNeedConsent();
  */
 export function useNeedConsent(): boolean {
-  return useAdConfigStore((state) => state.privacy.requireConsent);
+  return _useAdConfigStore((state) => state.privacy.requireConsent);
 }
 
 // ============================================================================
@@ -341,7 +344,7 @@ export function useAdSystemStatus() {
  * </button>
  */
 export function useToggleAds(): () => void {
-  return useAdConfigStore((state) => state.toggleEnabled);
+  return _useAdConfigStore((state) => state.toggleEnabled);
 }
 
 /**
@@ -354,7 +357,7 @@ export function useToggleAds(): () => void {
  * <button onClick={resetConfig}>Reset to Defaults</button>
  */
 export function useResetAdConfig(): () => void {
-  return useAdConfigStore((state) => state.resetConfig);
+  return _useAdConfigStore((state) => state.resetConfig);
 }
 
 /**
@@ -367,7 +370,7 @@ export function useResetAdConfig(): () => void {
  * updateApiConfig({ apiKey: 'new-key' });
  */
 export function useUpdateApiConfig() {
-  return useAdConfigStore((state) => state.updateApiConfig);
+  return _useAdConfigStore((state) => state.updateApiConfig);
 }
 
 /**
@@ -380,7 +383,7 @@ export function useUpdateApiConfig() {
  * updateDataCollection({ includeMemory: true });
  */
 export function useUpdateDataCollectionConfig() {
-  return useAdConfigStore((state) => state.updateDataCollectionConfig);
+  return _useAdConfigStore((state) => state.updateDataCollectionConfig);
 }
 
 /**
@@ -393,7 +396,7 @@ export function useUpdateDataCollectionConfig() {
  * updateFormat('actionCard', { frequency: 5 });
  */
 export function useUpdateFormatConfig() {
-  return useAdConfigStore((state) => state.updateFormatConfig);
+  return _useAdConfigStore((state) => state.updateFormatConfig);
 }
 
 /**
@@ -406,7 +409,7 @@ export function useUpdateFormatConfig() {
  * updatePrivacy({ requireConsent: false });
  */
 export function useUpdatePrivacyConfig() {
-  return useAdConfigStore((state) => state.updatePrivacyConfig);
+  return _useAdConfigStore((state) => state.updatePrivacyConfig);
 }
 
 // ============================================================================

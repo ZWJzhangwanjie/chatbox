@@ -20,6 +20,8 @@ import type {
   SessionInfo,
 } from './types';
 import { anonymizeMemory, anonymizeProfile, anonymizeMessages } from '../utils/privacy';
+import { getMemoryCache } from './MemoryCache';
+import type { Memory } from '@/shared/types';
 
 // ============================================================================
 // 数据收集器
@@ -36,6 +38,8 @@ import { anonymizeMemory, anonymizeProfile, anonymizeMessages } from '../utils/p
  */
 export class DataCollector {
   // ========== 构造函数 ==========
+  private memoryCache = getMemoryCache();
+
   constructor(private config: AdConfig) {}
 
   // ========== 公共方法 ==========
@@ -107,25 +111,50 @@ export class DataCollector {
     // 收集用户记忆（涉及隐私）
     if (
       this.config.dataCollection.includeMemory &&
-      context.userData?.memory &&
       this.isDataTypeAllowed('memory')
     ) {
-      requestData.userMemory = this.processMemory(context.userData.memory);
-      summary.hasMemory = true;
-    } else if (this.config.dataCollection.includeMemory) {
-      warnings.push('Memory collection is disabled by privacy config');
+      // 从缓存同步获取记忆数据
+      const memories = this.memoryCache.getMemories();
+
+      // 调试：输出配置和缓存状态
+      console.log('[DataCollector] 记忆收集检查:', {
+        includeMemory: this.config.dataCollection.includeMemory,
+        allowedDataTypes: this.config.privacy.allowedDataTypes,
+        isMemoryAllowed: this.isDataTypeAllowed('memory'),
+        cacheStatus: this.memoryCache.getStatus(),
+        memoriesCount: memories.length,
+      });
+
+      if (memories.length > 0) {
+        const userMemory = this.convertMemoriesToUserMemory(memories);
+        requestData.userMemory = this.processMemory(userMemory);
+        summary.hasMemory = true;
+
+        console.log('[DataCollector] 记忆数据已收集:', {
+          count: memories.length,
+          userMemory: requestData.userMemory,
+          types: this.countByType(memories),
+        });
+      } else {
+        console.warn('[DataCollector] 记忆缓存为空，将在后台刷新');
+        warnings.push('记忆缓存为空，将在后台刷新');
+      }
+    } else {
+      console.log('[DataCollector] 记忆收集未启用:', {
+        includeMemory: this.config.dataCollection.includeMemory,
+        allowedDataTypes: this.config.privacy.allowedDataTypes,
+        isMemoryAllowed: this.isDataTypeAllowed('memory'),
+      });
     }
 
     // 收集用户画像（涉及隐私）
+    // 注意：当前画像数据暂未从记忆系统提取，暂不收集
     if (
       this.config.dataCollection.includeProfile &&
-      context.userData?.profile &&
       this.isDataTypeAllowed('profile')
     ) {
-      requestData.userProfile = this.processProfile(context.userData.profile);
-      summary.hasProfile = true;
-    } else if (this.config.dataCollection.includeProfile) {
-      warnings.push('Profile collection is disabled by privacy config');
+      // TODO: 从记忆中提取用户画像数据
+      warnings.push('用户画像收集暂未实现');
     }
 
     // 计算数据大小（估算）
@@ -390,6 +419,61 @@ export class DataCollector {
     }
 
     return size;
+  }
+
+  /**
+   * 将 Memory[] 转换为 UserMemory 格式
+   *
+   * @param memories - 记忆数组
+   * @returns UserMemory 格式的数据
+   *
+   * @description
+   * - 只传递脱敏数据（category, tags, summary），不传递原始 content
+   * - 按类型分类为短期记忆和长期记忆
+   */
+  private convertMemoriesToUserMemory(memories: Memory[]): {
+    shortTerm: Record<string, unknown>;
+    longTerm: Record<string, unknown>;
+  } {
+    const shortTerm: Record<string, unknown> = {};
+    const longTerm: Record<string, unknown> = {};
+
+    // 记忆类型分类
+    const SHORT_TERM_TYPES = ['implicit_pattern'];
+    const LONG_TERM_TYPES = ['explicit_preference', 'explicit_fact', 'implicit_interest'];
+
+    for (const memory of memories) {
+      const key = `${memory.type}_${memory.id}`;
+
+      // 只传递脱敏数据，不传递原始 content（保护隐私）
+      const value = {
+        category: memory.category,
+        tags: memory.tags,
+        summary: memory.summary,
+        importance: memory.importance,
+      };
+
+      if (SHORT_TERM_TYPES.includes(memory.type)) {
+        shortTerm[key] = value;
+      } else if (LONG_TERM_TYPES.includes(memory.type)) {
+        longTerm[key] = value;
+      }
+    }
+
+    return { shortTerm, longTerm };
+  }
+
+  /**
+   * 按类型统计记忆数量
+   *
+   * @param memories - 记忆数组
+   * @returns 类型到数量的映射
+   */
+  private countByType(memories: Memory[]): Record<string, number> {
+    return memories.reduce((acc, m) => {
+      acc[m.type] = (acc[m.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
   }
 }
 

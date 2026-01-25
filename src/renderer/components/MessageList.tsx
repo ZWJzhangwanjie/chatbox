@@ -148,7 +148,28 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
   }, [currentSession, currentMessageList, userData])
 
   // 统一获取所有广告数据（每个 session 只请求一次）
-  const { allAds } = useAds(adContext)
+  // 指定 MessageList 场景需要的格式：action_card、suffix、followup、lead_gen
+  const { allAds, slots, getAdsBySlot, getSlot } = useAds(adContext, {
+    formats: ['action_card', 'suffix', 'followup', 'lead_gen'],
+  })
+
+  // 使用 useRef 稳定函数引用，避免因函数引用变化导致 adData 重新创建
+  const getAdsBySlotRef = useRef(getAdsBySlot)
+  const getSlotRef = useRef(getSlot)
+
+  // 保持 ref 同步
+  useEffect(() => {
+    getAdsBySlotRef.current = getAdsBySlot
+    getSlotRef.current = getSlot
+  }, [getAdsBySlot, getSlot])
+
+  // 构建广告集成数据对象（使用稳定的函数引用）
+  const adData = useMemo(() => ({
+    ads: allAds,
+    slots,
+    getAdsBySlot: (slotId: string) => getAdsBySlotRef.current ? getAdsBySlotRef.current(slotId) : [],
+    getSlot: (slotId: string) => getSlotRef.current ? getSlotRef.current(slotId) : undefined,
+  }), [allAds, slots])
   // ========== AI Ad Network - 结束 ==========
 
   // 稳定最后一条消息的引用，避免 AIFeaturesMessage 无限重渲染
@@ -375,7 +396,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                       }
                       assistantAvatarKey={currentSession.assistantAvatarKey}
                       sessionPicUrl={currentSession.picUrl}
-                      allAds={allAds}
+                      adData={adData}
                     />
                   </ErrorBoundary>
                   {currentSession.messageForksHash?.[msg.id] &&
@@ -397,7 +418,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                         sessionId={currentSession.id}
                         followUpSuggestions={displayFollowUpSuggestions}
                         recommendations={displayRecommendations}
-                        allAds={allAds}
+                        adData={adData}
                       />
                     </ErrorBoundary>
                   )}
@@ -408,7 +429,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                       messages={currentMessageList}
                       sessionId={currentSession.id}
                       messageIndex={index}
-                      allAds={allAds}
+                      adData={adData}
                     >
                       {/* 广告组件会根据配置自动显示，这里不需要渲染任何内容 */}
                       <></>

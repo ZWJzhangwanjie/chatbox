@@ -11,7 +11,7 @@ import {
 } from '@tabler/icons-react'
 import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ThemeSwitchButton from './components/dev/ThemeSwitchButton'
 import { ScalableIcon } from './components/ScalableIcon'
@@ -28,8 +28,49 @@ import { useLanguage } from './stores/settingsStore'
 import { useUIStore } from './stores/uiStore'
 import { CHATBOX_BUILD_PLATFORM } from './variables'
 // AI Ad Network - 广告集成
-import { useIsFormatEnabled, useIsAdEnabled } from './packages/ads/hooks/useAdConfig'
+import { useIsFormatEnabled, useIsAdEnabled, useFormatConfig } from './packages/ads/hooks/useAdConfig'
 import { StaticSlot } from './packages/ads/components/AdSlot'
+import { useAds } from './packages/ads/hooks/useAds'
+import type { AdTriggerContext } from './packages/ads/core/types'
+
+// ============================================================================
+// Sidebar Static Ad 子组件
+// 只有当 placement === 'sidebar' 时才会被渲染，避免不必要的广告请求
+// ============================================================================
+function SidebarStaticAd() {
+  const sidebarAdContext: AdTriggerContext = useMemo(() => ({
+    currentMessage: {
+      query: 'sidebar',
+      response: 'global',
+      timestamp: Date.now(),
+      model: 'default',
+      provider: 'chatbox',
+      isStreaming: false,
+    },
+    conversationContext: {
+      sessionId: 'sidebar',
+      messageCount: 1,
+      messages: [{ role: 'user', content: 'sidebar' }],
+    },
+  }), [])
+
+  // 只请求 static 格式的广告
+  const { getAdsBySlot, getSlot } = useAds(sidebarAdContext, {
+    formats: ['static'],
+  })
+
+  return (
+    <Box px="md" py="sm">
+      <StaticSlot
+        format="static"
+        placement="sidebar"
+        slotId="slot-static"
+        getAdsBySlot={typeof getAdsBySlot === 'function' ? getAdsBySlot : () => []}
+        getSlot={typeof getSlot === 'function' ? getSlot : () => undefined}
+      />
+    </Box>
+  )
+}
 
 export default function Sidebar() {
   const { t } = useTranslation()
@@ -40,9 +81,11 @@ export default function Sidebar() {
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth)
 
-  // AI Ad Network - 检查 Static 广告是否启用
+  // AI Ad Network - 检查 Static 广告配置
+  // ⚠️ 只检查条件，不调用 useAds，避免不必要的请求
   const isAdEnabled = useIsAdEnabled()
   const isStaticAdEnabled = useIsFormatEnabled('static')
+  const staticConfig = useFormatConfig('static')
 
   const sessionListViewportRef = useRef<HTMLDivElement>(null)
 
@@ -163,10 +206,9 @@ export default function Sidebar() {
         <SessionList sessionListViewportRef={sessionListViewportRef} />
 
         {/* AI Ad Network - Static 广告 (在侧边栏中部) */}
-        {isAdEnabled && isStaticAdEnabled && (
-          <Box px="md" py="sm">
-            <StaticSlot format="static" placement="sidebar" />
-          </Box>
+        {/* 使用子组件，只在 placement === 'sidebar' 时才渲染，避免不必要的广告请求 */}
+        {isAdEnabled && isStaticAdEnabled && staticConfig.placement === 'sidebar' && (
+          <SidebarStaticAd />
         )}
 
         <Stack gap={0} px="xs" pb="xs">

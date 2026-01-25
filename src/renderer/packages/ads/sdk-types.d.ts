@@ -124,7 +124,7 @@ declare module '@ai-ad-network/frontend-sdk' {
     /** 展示事件 */
     onImpression?: (ad: Ad) => void
     /** 视觉变体 */
-    variant?: 'horizontal' | 'vertical' | 'compact'
+    variant?: 'default' | 'horizontal' | 'vertical' | 'compact' | string
   }
 
   export interface SuffixAdProps {
@@ -133,7 +133,7 @@ declare module '@ai-ad-network/frontend-sdk' {
     /** 自定义类名 */
     className?: string
     /** 视觉变体 */
-    variant?: 'block' | 'inline' | 'minimal'
+    variant?: 'default' | 'block' | 'inline' | 'minimal' | string
   }
 
   export interface FollowUpAdProps {
@@ -144,7 +144,7 @@ declare module '@ai-ad-network/frontend-sdk' {
     /** 点击事件 */
     onClick?: (ad: Ad) => void
     /** 视觉变体 */
-    variant?: 'bubble' | 'pill' | 'underline'
+    variant?: 'default' | 'bubble' | 'pill' | 'underline' | string
   }
 
   export interface SponsoredSourceAdProps {
@@ -155,7 +155,7 @@ declare module '@ai-ad-network/frontend-sdk' {
     /** 点击事件 */
     onClick?: (ad: Ad) => void
     /** 视觉变体 */
-    variant?: 'card' | 'minimal' | 'list_item'
+    variant?: 'default' | 'card' | 'minimal' | 'list_item' | string
   }
 
   export interface StaticAdProps {

@@ -24,6 +24,8 @@ import { formatElapsedTime, useThinkingTimer } from '@/hooks/useThinkingTimer'
 import { cn } from '@/lib/utils'
 import { getToolName } from '@/packages/tools'
 import type { SearchResultItem } from '@/packages/web-search'
+import { useFormatConfig } from '@/packages/ads/hooks/useAdConfig'
+import { CitationDisplay } from '../CitationDisplay'
 import { ScalableIcon } from '../ScalableIcon'
 
 const ToolCallHeader: FC<{ part: MessageToolCallPart; action: ReactNode; onClick: () => void }> = (props) => {
@@ -93,13 +95,70 @@ const getSafeExternalHref = (raw: string): string | null => {
 }
 
 const SearchResultCard: FC<{ index: number; result: SearchResultItem }> = ({ index, result }) => {
-  const href = getSafeExternalHref(result.link)
+  const sourceConfig = useFormatConfig('source')
+  const showSponsoredLabel = sourceConfig?.showSponsoredLabel ?? true
+
+  const isAd = result._isAd ?? false
+
+  // Debug logging for ads
+  if (isAd) {
+    console.log('[🔍 Ads Debug] SearchResultCard rendering ad:', {
+      index,
+      title: result.title,
+      _isAd: result._isAd,
+      _type: result._type,
+      showSponsoredLabel,
+    })
+  }
+
+  // For ads, use the click tracking URL; for regular results, use the original link
+  const href = isAd && result._clickUrl
+    ? getSafeExternalHref(result._clickUrl)
+    : getSafeExternalHref(result.link)
+  const title = result.title.replace(' [品牌合作]', '')
 
   const content = (
-    <Paper radius="md" p={8} bg={'var(--chatbox-background-gray-secondary)'} maw={200} title={result.title}>
-      <Text size="sm" truncate="end" m={0}>
-        <b>{index + 1}.</b> {result.title}
-      </Text>
+    <Paper
+      radius="md"
+      p={8}
+      bg={isAd ? 'var(--sponsored-bg, #fffbf0)' : 'var(--chatbox-background-gray-secondary)'}
+      maw={200}
+      title={title}
+      withBorder={isAd}
+      style={isAd ? {
+        borderColor: 'var(--accent, #f57c00)',
+        borderWidth: '1px',
+        borderStyle: 'solid',
+        position: 'relative',
+      } : { position: 'relative' }}
+    >
+      {/* Sponsored label in top-right corner */}
+      {isAd && showSponsoredLabel && (
+        <Text
+          size="xs"
+          c="var(--accent, #f57c00)"
+          fw={700}
+          span
+          style={{
+            position: 'absolute',
+            top: '4px',
+            right: '4px',
+            backgroundColor: 'var(--accent-bg, #fff3e0)',
+            padding: '2px 6px',
+            borderRadius: '4px',
+            fontSize: '10px',
+            letterSpacing: '0.5px',
+            zIndex: 1,
+          }}
+        >
+          AD
+        </Text>
+      )}
+      <Group gap={4} wrap="nowrap">
+        <Text size="sm" truncate="end" m={0}>
+          <b>{index + 1}.</b> {title}
+        </Text>
+      </Group>
       <Text size="xs" truncate="end" c="chatbox-tertiary" m={0} mt={4}>
         {result.link}
       </Text>
@@ -120,6 +179,18 @@ const SearchResultCard: FC<{ index: number; result: SearchResultItem }> = ({ ind
 const WebSearchToolCallUI: FC<{ part: WebBrowsingToolCallPart }> = ({ part }) => {
   const { t } = useTranslation()
   const [expaned, setExpand] = useState(false)
+
+  console.log('[🔍 Web Search Debug] WebSearchToolCallUI rendered:', {
+    query: part.args?.query,
+    hasResult: !!part.result,
+    resultCount: part.result?.searchResults?.length ?? 0,
+  })
+
+  // Check if results contain ads or if we should use CitationDisplay format
+  const hasAds = part.result?.searchResults.some(r => r._isAd) ?? false
+  const resultCount = part.result?.searchResults.length ?? 0
+  const useCitationFormat = hasAds || resultCount > 5
+
   return (
     <Stack gap="xs" mb="xs">
       <ToolCallHeader
@@ -140,11 +211,19 @@ const WebSearchToolCallUI: FC<{ part: WebBrowsingToolCallPart }> = ({ part }) =>
             </Text>
           </Group>
           {part.result && (
-            <SimpleGrid cols={{ sm: 3, md: 4 }} spacing="xs">
-              {part.result.searchResults.map((result, index) => (
-                <SearchResultCard key={result.link} index={index} result={result} />
-              ))}
-            </SimpleGrid>
+            <>
+              {useCitationFormat ? (
+                // Use new CitationDisplay format for results with ads or many results
+                <CitationDisplay results={part.result.searchResults} />
+              ) : (
+                // Original grid format for small result sets without ads
+                <SimpleGrid cols={{ sm: 3, md: 4 }} spacing="xs">
+                  {part.result.searchResults.map((result, index) => (
+                    <SearchResultCard key={result.link} index={index} result={result} />
+                  ))}
+                </SimpleGrid>
+              )}
+            </>
           )}
         </Stack>
       </Collapse>
@@ -207,6 +286,12 @@ const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
 }
 
 export const ToolCallPartUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
+  console.log('[🔍 Web Search Debug] ToolCallPartUI rendered:', {
+    toolName: part.toolName,
+    state: part.state,
+    hasResult: !!part.result,
+  })
+
   if (part.toolName === 'web_search') {
     const parsedPart = WebBrowsingToolCallPartSchema.safeParse(part)
     if (parsedPart.success) {

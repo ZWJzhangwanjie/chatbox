@@ -54,7 +54,7 @@ import { ReasoningContentUI, ToolCallPartUI } from './message-parts/ToolCallPart
 import { ScalableIcon } from './ScalableIcon'
 import { ThinkIndicator } from '@/packages/aiFeatures/thinkMode'
 // AI Ad Network - 广告集成
-import { MessageSuffixAd } from '@/packages/ads/components/MessageAdIntegration'
+import { MessageSuffixAd, AdIntegrationData } from '@/packages/ads/components/MessageAdIntegration'
 import { LeadGenSlot } from '@/packages/ads/components/AdSlot'
 import { useAdConfig } from '@/packages/ads/hooks/useAdConfig'
 
@@ -69,8 +69,8 @@ interface Props {
   small?: boolean
   assistantAvatarKey?: string
   sessionPicUrl?: string
-  // AI Ad Network - 所有格式的广告数据
-  allAds?: import('@/packages/ads/core/types').Ad[]
+  // AI Ad Network - 广告集成数据
+  adData?: AdIntegrationData
 }
 
 const _Message: FC<Props> = (props) => {
@@ -83,7 +83,7 @@ const _Message: FC<Props> = (props) => {
     small,
     assistantAvatarKey,
     sessionPicUrl,
-    allAds,  // AI Ad Network - 所有格式的广告数据
+    adData,  // AI Ad Network - 广告集成数据
   } = props
 
   const { t } = useTranslation()
@@ -277,6 +277,16 @@ const _Message: FC<Props> = (props) => {
   }, [msg.contentParts, msg.role, msg])
 
   const contentParts = msg.contentParts || []
+
+  // Debug: Check for tool-call parts
+  const toolCallParts = contentParts.filter((p) => p.type === 'tool-call')
+  if (toolCallParts.length > 0) {
+    console.log('[🔍 Web Search Debug] Message has tool-call parts:', {
+      messageId: msg.id,
+      toolCallCount: toolCallParts.length,
+      toolNames: toolCallParts.map((p) => (p as any).toolName),
+    })
+  }
 
   const CollapseButton = (
     <span
@@ -522,7 +532,7 @@ const _Message: FC<Props> = (props) => {
             </div>
 
             {/* AI Ad Network - Suffix 广告 */}
-            <MessageSuffixAd msg={msg} sessionId={sessionId} userQuery={userQuery} allAds={allAds} />
+            <MessageSuffixAd msg={msg} sessionId={sessionId} userQuery={userQuery} adData={adData} />
 
             {/* AI Ad Network - LeadGen 广告 (在助手消息后显示) */}
             {(() => {
@@ -535,7 +545,9 @@ const _Message: FC<Props> = (props) => {
                   format="lead_gen"
                   placement="after_response"
                   showDebug={adConfig.debug}
-                  allAds={allAds}  // 传递 allAds，使用统一数据
+                  slotId="slot-lead_gen"
+                  getAdsBySlot={adData?.getAdsBySlot}
+                  getSlot={adData?.getSlot}
                   context={{
                     currentMessage: {
                       query: userQuery || 'Unknown query',  // 降级处理

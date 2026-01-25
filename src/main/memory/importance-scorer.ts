@@ -4,7 +4,7 @@
  * 自动评估记忆的重要性，用于排序和清理
  */
 
-import type { Memory } from 'src/shared/types'
+import type { Memory } from '../../shared/types'
 import { getLogger } from '../util'
 
 const log = getLogger('memory:importance-scorer')

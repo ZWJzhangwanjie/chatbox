@@ -90,44 +90,90 @@ function applyModelPersonalization(
  */
 async function triggerMemoryExtraction(sessionId: string) {
   try {
+    console.log('[Memory] ===== triggerMemoryExtraction 被调用 =====')
+    console.log('[Memory] Session ID:', sessionId)
+
     const globalSettings = settingsStore.getState().getSettings()
+    console.log('[Memory] globalSettings.memoryEnabled:', globalSettings.memoryEnabled)
 
     // 检查记忆功能是否启用
     if (!globalSettings.memoryEnabled) {
+      console.log('[Memory] 记忆功能未启用，跳过提取')
       return
     }
 
     // 检查是否启用了自动提取
     const memorySettings = globalSettings.memorySettings
+    console.log('[Memory] memorySettings:', memorySettings)
+    console.log('[Memory] autoExtract:', memorySettings?.autoExtract)
+
     if (!memorySettings?.autoExtract) {
+      console.log('[Memory] 自动提取未启用，跳过')
       return
     }
 
     const session = await chatStore.getSession(sessionId)
     if (!session) {
+      console.log('[Memory] 会话不存在，跳过')
       return
     }
 
     // 只在消息数量达到一定阈值时提取（避免频繁提取）
-    const messageCountThreshold = memorySettings.extractOnMessageCount || 10
+    // 降低阈值以更及时地提取记忆：默认 3 条用户消息后提取
+    const messageCountThreshold = memorySettings.extractOnMessageCount || 3
     const userMessageCount = session.messages.filter((m) => m.role === 'user').length
 
+    console.log('[Memory] 消息计数:', {
+      threshold: messageCountThreshold,
+      userMessageCount,
+      shouldTrigger: userMessageCount >= messageCountThreshold && userMessageCount % messageCountThreshold === 0
+    })
+
     // 检查消息数量是否达到阈值
-    if (userMessageCount % messageCountThreshold !== 0) {
+    if (userMessageCount < messageCountThreshold || userMessageCount % messageCountThreshold !== 0) {
+      console.log('[Memory] 消息数量未达到阈值，跳过提取')
       return
     }
 
     // 异步提取记忆（不阻塞主流程）
+    console.log('[Memory] 开始异步提取记忆...')
+    console.log('[Memory] 消息数量:', session.messages.length)
+
+    const userMessages = session.messages.filter(m => m.role === 'user')
+    console.log('[Memory] 用户消息数量:', userMessages.length)
+    console.log('[Memory] 用户消息详情:', userMessages.map(m => {
+      // 打印完整的消息对象（排除可能的循环引用）
+      const msg = {
+        role: m.role,
+        type: m.type,
+        content: m.content,
+        text: m.text,
+        contentText: m.contentText,
+        parts: m.parts ? `Array(${m.parts.length})` : undefined,
+        allKeys: Object.keys(m)
+      }
+      return msg
+    }))
+    console.log('[Memory] Platform type:', platform.type)
+
     platform
       .extractMemoriesFromSession(sessionId, session.messages)
       .then((result) => {
-        // Memory extraction completed
+        console.log('[Memory] ===== 提取完成 =====')
+        console.log('[Memory] 提取到记忆数量:', result.memories.length)
+        console.log('[Memory] 置信度:', result.confidence)
+        console.log('[Memory] 说明:', result.reasoning)
+        if (result.memories.length > 0) {
+          console.log('[Memory] 记忆内容:', result.memories)
+        } else {
+          console.warn('[Memory] ⚠️ 没有提取到任何记忆')
+        }
       })
       .catch((error) => {
-        console.error('[Memory] Extraction failed:', error)
+        console.error('[Memory] ❌ Extraction failed:', error)
       })
   } catch (error) {
-    console.error('[Memory] Failed to trigger memory extraction:', error)
+    console.error('[Memory] ❌ Failed to trigger memory extraction:', error)
   }
 }
 

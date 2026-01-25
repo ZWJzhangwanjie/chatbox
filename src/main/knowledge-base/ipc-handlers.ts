@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron'
-import type { FileMeta } from 'src/shared/types'
+import type { FileMeta } from '../../shared/types'
 import { sentry } from '../adapters/sentry'
 import { getLogger } from '../util'
 import { getDatabase, getVectorStore, parseSQLiteTimestamp, withTransaction } from './db'

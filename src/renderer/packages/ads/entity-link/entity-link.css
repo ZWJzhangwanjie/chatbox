@@ -1,0 +1,302 @@
+/**
+ * AI Ad Network - Entity Link Styles
+ *
+ * 实体链接广告的样式定义
+ * 支持多种徽章样式：subtle、hover、explicit、none
+ */
+
+/* ============================================================================
+   Base Styles
+   ============================================================================ */
+
+.entity-link-enhanced-content {
+  display: inline;
+}
+
+/* ============================================================================
+   Subtle Badge Style (默认)
+   ============================================================================ */
+
+.entity-link-badge-subtle {
+  border-bottom: 1px dotted #228be6;
+  color: #228be6;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.entity-link-badge-subtle:hover {
+  background-color: rgba(34, 139, 230, 0.05);
+  border-bottom-style: solid;
+}
+
+/* ============================================================================
+   Hover Badge Style
+   ============================================================================ */
+
+.entity-link-badge-hover {
+  cursor: pointer;
+  transition: color 0.2s ease;
+  position: relative;
+}
+
+.entity-link-badge-hover:hover {
+  color: #228be6;
+}
+
+.entity-link-badge-label {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* ============================================================================
+   Explicit Badge Style
+   ============================================================================ */
+
+.entity-link-badge-explicit {
+  background: #fff3cd;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #ffc107;
+  color: #856404;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.entity-link-badge-explicit:hover {
+  background: #ffe69c;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ============================================================================
+   None Badge Style (无标记)
+   ============================================================================ */
+
+.entity-link-badge-none {
+  color: #228be6;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.entity-link-badge-none:hover {
+  color: #1a7bc4;
+  text-decoration-style: double;
+}
+
+/* ============================================================================
+   Accessibility (可访问性)
+   ============================================================================ */
+
+/* 高对比度模式支持 */
+@media (prefers-contrast: high) {
+  .entity-link-badge-subtle {
+    border-bottom: 2px solid #228be6;
+  }
+
+  .entity-link-badge-explicit {
+    border-width: 2px;
+  }
+}
+
+/* 减少动画模式支持 */
+@media (prefers-reduced-motion: reduce) {
+  .entity-link-badge-subtle,
+  .entity-link-badge-hover,
+  .entity-link-badge-explicit,
+  .entity-link-badge-none {
+    transition: none;
+  }
+
+  .entity-link-badge-label {
+    animation: none;
+  }
+}
+
+/* ============================================================================
+   Dark Mode (深色模式)
+   ============================================================================ */
+
+@media (prefers-color-scheme: dark) {
+  .entity-link-badge-subtle {
+    border-bottom-color: #4dabf7;
+    color: #4dabf7;
+  }
+
+  .entity-link-badge-subtle:hover {
+    background-color: rgba(77, 171, 247, 0.1);
+  }
+
+  .entity-link-badge-hover:hover {
+    color: #4dabf7;
+  }
+
+  .entity-link-badge-explicit {
+    background: #5c4d03;
+    border-color: #ffec99;
+    color: #ffec99;
+  }
+
+  .entity-link-badge-explicit:hover {
+    background: #745d09;
+  }
+
+  .entity-link-badge-none {
+    color: #4dabf7;
+  }
+
+  .entity-link-badge-none:hover {
+    color: #74c0fc;
+  }
+}
+
+/* ============================================================================
+   Print Styles (打印样式)
+   ============================================================================ */
+
+@media print {
+  .entity-link-badge-subtle,
+  .entity-link-badge-hover,
+  .entity-link-badge-explicit,
+  .entity-link-badge-none {
+    color: #000;
+    text-decoration: underline;
+    border: none;
+    background: none;
+  }
+
+  .entity-link-badge-label {
+    display: none;
+  }
+}
+
+/* ============================================================================
+   Utility Classes
+   ============================================================================ */
+
+/* 用于消息下方的实体列表 */
+.entity-link-list {
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--mantine-color-gray-0);
+  border-radius: 8px;
+  border: 1px solid var(--mantine-color-gray-3);
+}
+
+.entity-link-list-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--mantine-color-dimmed);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.entity-link-list-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.entity-link-list-item {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  background: white;
+  border: 1px solid var(--mantine-color-gray-3);
+  border-radius: 4px;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.entity-link-list-item:hover {
+  border-color: #228be6;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.entity-link-list-item-link {
+  color: #228be6;
+  text-decoration: none;
+}
+
+.entity-link-list-item-link:hover {
+  text-decoration: underline;
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.entity-link-pulse {
+  animation: pulse 2s ease-in-out infinite;
+}
+
+/* ============================================================================
+   Tooltip Styles (如果需要自定义 tooltip)
+   ============================================================================ */
+
+.entity-link-tooltip {
+  position: absolute;
+  background: #1a1a1a;
+  color: white;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.entity-link-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: #1a1a1a;
+}
+
+/* ============================================================================
+   Responsive Design
+   ============================================================================ */
+
+@media (max-width: 768px) {
+  .entity-link-badge-explicit {
+    padding: 1px 4px;
+    font-size: 0.9em;
+  }
+
+  .entity-link-list {
+    padding: 8px;
+  }
+
+  .entity-link-list-item {
+    font-size: 11px;
+    padding: 3px 6px;
+  }
+}

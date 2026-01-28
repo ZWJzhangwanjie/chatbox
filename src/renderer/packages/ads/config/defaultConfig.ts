@@ -204,6 +204,26 @@ export function getDefaultAdConfig(): AdConfig {
           },
         ],
       },
+
+      // --- EntityLink (实体链接广告) ---
+      entityLink: {
+        // 默认关闭
+        enabled: false,
+        // 每 5 条消息展示一次
+        frequency: 5,
+        // 单次会话最多 5 次
+        maxPerSession: 5,
+        // 最多 3 个链接
+        maxLinks: 3,
+        // 70% 置信度阈值
+        minConfidence: 0.7,
+        // † 符号（最不突兀）
+        badgeStyle: 'subtle',
+        // 优先长实体
+        overlapStrategy: 'longest',
+        // 内联显示（替换原始文本）
+        placement: 'inline',
+      },
     },
 
     // ========== 隐私保护配置 ==========
@@ -280,6 +300,13 @@ export function getDevPresetConfig(): Partial<AdConfig> {
         frequency: 3,
         maxPerSession: 3,
       },
+      entityLink: {
+        enabled: true,
+        frequency: 2,
+        maxPerSession: 8,
+        maxLinks: 5,
+        badgeStyle: 'hover',
+      },
     },
     privacy: {
       enabled: false, // 开发时关闭隐私保护
@@ -332,6 +359,13 @@ export function getDemoPresetConfig(): Partial<AdConfig> {
         enabled: true,
         frequency: 10,
         maxPerSession: 1,
+      },
+      entityLink: {
+        enabled: true,
+        frequency: 3,
+        maxPerSession: 5,
+        maxLinks: 3,
+        badgeStyle: 'explicit',
       },
     },
     debug: false,
@@ -405,6 +439,7 @@ export function mergePreset(preset: Partial<AdConfig>): AdConfig {
       source: { ...defaults.formats.source, ...preset.formats?.source },
       static: { ...defaults.formats.static, ...preset.formats?.static },
       leadGen: { ...defaults.formats.leadGen, ...preset.formats?.leadGen },
+      entityLink: { ...defaults.formats.entityLink, ...preset.formats?.entityLink },
     },
     privacy: { ...defaults.privacy, ...preset.privacy },
     debug: preset.debug ?? defaults.debug,

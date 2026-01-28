@@ -52,11 +52,6 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
 
   public isSupportToolUse() {
     const supported = this.options.model.capabilities?.includes('tool_use') || false
-    console.log('[🔍 Web Search Debug] isSupportToolUse:', {
-      modelId: this.modelId,
-      capabilities: this.options.model.capabilities,
-      supported,
-    })
     return supported
   }
   public isSupportVision() {
@@ -187,18 +182,8 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     contentParts: MessageContentParts,
     options: CallChatCompletionOptions
   ): void {
-    console.log('[🔍 Web Search Debug] processToolCalls called:', {
-      toolCallsCount: toolCalls.length,
-      toolNames: toolCalls.map((t) => t.toolName),
-    })
-
     for (const toolCall of toolCalls) {
       const args = toolCall.input
-      console.log('[🔍 Web Search Debug] Processing tool call:', {
-        toolCallId: toolCall.toolCallId,
-        toolName: toolCall.toolName,
-        args,
-      })
 
       this.addContentPart(
         {
@@ -353,14 +338,6 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     currentTextPart: MessageTextPart | undefined
     currentReasoningPart: MessageReasoningPart | undefined
   }> {
-    // Log all chunk types for debugging
-    if (chunk.type === 'tool-call' || chunk.type === 'tool-result' || chunk.type === 'tool-error') {
-      console.log('[🔍 Web Search Debug] processStreamChunk:', {
-        chunkType: chunk.type,
-        toolName: chunk.type === 'tool-call' ? (chunk as any).toolName : undefined,
-      })
-    }
-
     // Finalize reasoning duration when transitioning to other content types
     const finalizeReasoningDuration = () => {
       if (currentReasoningPart?.startTime && !currentReasoningPart.duration) {
@@ -477,12 +454,6 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     options: CallChatCompletionOptions<T>,
     callSettings: CallSettings
   ): Promise<StreamTextResult> {
-    console.log('[🔍 Web Search Debug] handleStreamingCompletion:', {
-      toolsKeys: options.tools ? Object.keys(options.tools) : undefined,
-      messagesCount: coreMessages.length,
-      maxSteps: options.maxSteps,
-    })
-
     const result = streamText({
       model,
       messages: coreMessages,

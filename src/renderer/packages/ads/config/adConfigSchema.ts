@@ -23,6 +23,7 @@ import { z } from 'zod';
  * - source: 赞助来源广告
  * - static: 静态横幅广告
  * - lead_gen: 线索收集广告
+ * - entity_link: 实体链接广告
  */
 export const AdFormatEnum = z.enum([
   'action_card',
@@ -31,6 +32,7 @@ export const AdFormatEnum = z.enum([
   'source',
   'static',
   'lead_gen',
+  'entity_link',
 ]);
 
 export type AdFormat = z.infer<typeof AdFormatEnum>;
@@ -101,6 +103,8 @@ const ApiConfigSchema = z.object({
   timeout: z.number().int().positive().default(5000),
   /** 是否启用 Mock 模式（开发调试用） */
   useMock: z.boolean().default(false),
+  /** 是否使用 SDK 采集 ClientInfo（默认启用） */
+  useSdkClientInfo: z.boolean().default(true),
 });
 
 /**
@@ -239,6 +243,28 @@ const LeadGenFormatConfigSchema = z.object({
 });
 
 /**
+ * Entity Link 格式配置
+ */
+const EntityLinkFormatConfigSchema = z.object({
+  /** 是否启用 */
+  enabled: z.boolean().default(false),
+  /** 展示频率：每N条消息展示一次 */
+  frequency: z.number().int().min(1, '展示频率至少为 1').max(20, '展示频率不能超过 20').default(5),
+  /** 每会话最多展示次数 */
+  maxPerSession: z.number().int().min(1, '每会话至少展示 1 次').max(20, '每会话最多展示 20 次').default(5),
+  /** 最大链接数（1-10）*/
+  maxLinks: z.number().int().min(1, '至少显示 1 个链接').max(10, '最多显示 10 个链接').default(3),
+  /** 最小置信度（0-1）*/
+  minConfidence: z.number().min(0, '置信度范围为 0-1').max(1, '置信度范围为 0-1').default(0.7),
+  /** 徽章样式 */
+  badgeStyle: z.enum(['subtle', 'hover', 'explicit', 'none']).default('subtle'),
+  /** 重叠策略 */
+  overlapStrategy: z.enum(['longest', 'first', 'all']).default('longest'),
+  /** 展示位置 */
+  placement: z.enum(['inline', 'below_message']).default('inline'),
+});
+
+/**
  * 隐私保护配置
  */
 const PrivacyConfigSchema = z.object({
@@ -285,6 +311,7 @@ export const adConfigSchema = z.object({
     source: SourceFormatConfigSchema,
     static: StaticFormatConfigSchema,
     leadGen: LeadGenFormatConfigSchema,
+    entityLink: EntityLinkFormatConfigSchema,
   }),
 
   /** 隐私保护配置 */
@@ -336,6 +363,7 @@ export type FollowUpFormatConfig = z.infer<typeof FollowUpFormatConfigSchema>;
 export type SourceFormatConfig = z.infer<typeof SourceFormatConfigSchema>;
 export type StaticFormatConfig = z.infer<typeof StaticFormatConfigSchema>;
 export type LeadGenFormatConfig = z.infer<typeof LeadGenFormatConfigSchema>;
+export type EntityLinkFormatConfig = z.infer<typeof EntityLinkFormatConfigSchema>;
 
 /**
  * 隐私配置类型

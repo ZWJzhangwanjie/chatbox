@@ -45,6 +45,7 @@ export type AdFormatType =
   | 'source'
   | 'static'
   | 'lead_gen'
+  | 'entity_link'
 
 /**
  * useAds Hook 选项
@@ -134,6 +135,7 @@ function formatToConfigKey(format: string): keyof AdConfig['formats'] {
     'action_card': 'actionCard',
     'followup': 'followup',
     'lead_gen': 'leadGen',
+    'entity_link': 'entityLink',
   }
   return map[format] || format as keyof AdConfig['formats']
 }
@@ -358,29 +360,60 @@ export function useAds(
 
   // 主 effect：获取广告
   useEffect(() => {
+    // 🔧 诊断日志
+    console.log('[useAds] Effect triggered:', {
+      hasContext: !!context,
+      requestedFormats: options?.formats,
+      enabledFormats: enabledFormats,
+      globalEnabled: config.enabled,
+    })
+
     // 如果没有 context 或没有启用的格式，不请求
     if (!context || enabledFormats.length === 0) {
+      console.log('[useAds] ⚠️ Skipping request:', {
+        noContext: !context,
+        noEnabledFormats: enabledFormats.length === 0,
+      })
       setAllAds([])
       setSlots([])
       return
     }
 
+    console.log('[useAds] ✅ Proceeding with ad request for formats:', enabledFormats)
+
     const cacheKey = generateCacheKey(context, enabledFormats)
     cacheKeyRef.current = cacheKey
+
+    console.log('[useAds] Cache key:', cacheKey)
 
     // 检查缓存
     const cached = adsCache.get(cacheKey)
 
     if (cached && isCacheValid(cached)) {
-      setAllAds(cached.ads)
-      setSlots(cached.slots || [])
-      setGetAdsBySlot(() => cached.getAdsBySlot || (() => []))
-      setGetSlot(() => cached.getSlot || (() => undefined))
-      hasFetchedRef.current = true
-      return
+      console.log('[useAds] 📦 Using cached ads:', {
+        adCount: cached.ads.length,
+        hasSlots: !!cached.slots,
+        ageSeconds: Math.floor((Date.now() - cached.timestamp) / 1000),
+      })
+
+      // 🔧 关键修复：如果缓存为空，强制刷新
+      if (cached.ads.length === 0) {
+        console.log('[useAds] ⚠️ Cache is empty, forcing refresh...')
+        // 继续执行请求逻辑（不 return）
+      } else {
+        setAllAds(cached.ads)
+        setSlots(cached.slots || [])
+        setGetAdsBySlot(() => cached.getAdsBySlot || (() => []))
+        setGetSlot(() => cached.getSlot || (() => undefined))
+        hasFetchedRef.current = true
+        return
+      }
+    } else {
+      console.log('[useAds] No valid cache, fetching from API')
     }
 
     // 没有缓存或缓存过期，发送请求
+    console.log('[useAds] 🌐 Fetching ads from API...')
     const fetchController = new AbortController()
     const timeoutId = setTimeout(() => fetchController.abort(), 30000) // 30 秒超时
 
@@ -394,6 +427,12 @@ export function useAds(
           formats: enabledFormats,
           skipFrequencyCheck: options?.skipFrequencyCheck ?? config.debug,
           placement: options?.placement,
+        })
+
+        console.log('[useAds] ✅ Ads fetched successfully:', {
+          adCount: result.ads.length,
+          slotCount: result.slots?.length || 0,
+          isMock: result.isMock,
         })
 
         setAllAds(result.ads)

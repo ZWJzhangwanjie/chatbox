@@ -54,19 +54,10 @@ export class MemoryCache {
     const isExpired = now - this.lastFetchTime > this.TTL
     const isEmpty = this.cache.length === 0
 
-    console.log('[MemoryCache] getMemories 调用:', {
-      cacheCount: this.cache.length,
-      lastFetch: this.lastFetchTime,
-      age: this.lastFetchTime > 0 ? now - this.lastFetchTime : 0,
-      isExpired,
-      isEmpty,
-    })
-
     if (isExpired || isEmpty) {
       // 缓存过期或为空，触发异步刷新（不等待）
-      console.log('[MemoryCache] 触发后台刷新')
-      this.refresh().catch((err) => {
-        console.warn('[MemoryCache] 后台刷新失败:', err)
+      this.refresh().catch(() => {
+        // 静默失败
       })
     }
 
@@ -128,19 +119,7 @@ export class MemoryCache {
       // 限制数量
       this.cache = sortedMemories.slice(0, this.MAX_ITEMS)
       this.lastFetchTime = Date.now()
-
-      const elapsed = Date.now() - startTime
-      console.log(
-        `[MemoryCache] 刷新完成: ${this.cache.length}条记忆, 总计${memories.length}条, 耗时${elapsed}ms`
-      )
-
-      // 调试信息
-      if (this.cache.length > 0) {
-        const types = this.countByType(this.cache)
-        console.log('[MemoryCache] 记忆类型分布:', types)
-      }
     } catch (error) {
-      console.error('[MemoryCache] 刷新失败:', error)
       // 保持旧缓存，不清空
     }
   }

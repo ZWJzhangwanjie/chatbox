@@ -16,8 +16,10 @@ import { router } from './router'
 import './static/globals.css'
 import './static/index.css'
 // AI Ad Network - 广告样式
-import '@ai-ad-network/frontend-sdk/dist/style.css'
+// SDK 样式已通过自定义 ads.css 实现，无需导入 SDK 原始样式
+// import '@ai-ad-network/frontend-sdk/dist/style.css'
 import './packages/ads/styles/ads.css'
+import './packages/ads/entity-link/entity-link.css'
 import { initLogAtom, migrationProcessAtom } from './stores/atoms/utilAtoms'
 import * as migration from './stores/migration'
 import queryClient from './stores/queryClient'

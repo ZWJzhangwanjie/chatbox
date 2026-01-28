@@ -46,17 +46,6 @@ interface CitationCardProps {
 function CitationCard({ index, result, showSponsoredLabel = true }: CitationCardProps) {
   const isAd = result._isAd ?? false
 
-  // Debug logging for ads
-  if (isAd) {
-    console.log('[🔍 Ads Debug] CitationCard rendering ad:', {
-      index,
-      title: result.title,
-      _isAd: result._isAd,
-      _type: result._type,
-      showSponsoredLabel,
-    })
-  }
-
   const title = result.title.replace(' [品牌合作]', '')
 
   const handleClick = () => {

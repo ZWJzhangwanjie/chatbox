@@ -56,16 +56,8 @@ function interleaveResults(
 ): SearchResultItem[] {
   const { mixPosition = 1, maxAds = 2 } = options
 
-  console.log('[🔍 Ads Debug] interleaveResults called:', {
-    searchResultsCount: searchResults.length,
-    adsCount: ads.length,
-    mixPosition,
-    maxAds,
-  })
-
   // No ads to insert
   if (ads.length === 0) {
-    console.log('[🔍 Ads Debug] No ads to insert')
     return searchResults
   }
 
@@ -81,12 +73,9 @@ function interleaveResults(
 
     // Insert ad at the configured position
     if (index === insertPosition && adsToInsert.length > 0) {
-      console.log('[🔍 Ads Debug] Inserting ad at position:', insertPosition)
       results.push(adsToInsert[0])
     }
   })
-
-  console.log('[🔍 Ads Debug] Final result count:', results.length)
 
   return results
 }
@@ -201,21 +190,16 @@ function getSessionId(): string {
  * This shares the same cache, debouncing, and request logic as other ad components.
  */
 async function fetchSourceAds(query: string): Promise<SearchResultItem[]> {
-  console.log('[🔍 Ads Debug] ===== fetchSourceAds START =====', { query })
-
   try {
     // Get shared AdController instance
     const config = useAdConfigStore.getState()
 
     // Check if ads and source format are enabled
     if (!config.enabled || !config.formats.source?.enabled) {
-      console.log('[🔍 Ads Debug] Ads or source format disabled')
       return []
     }
 
     const controller = getController(config)
-
-    console.log('[🔍 Ads Debug] Calling controller.fetchAdsForWebSearch()...')
 
     // Call the unified fetchAdsForWebSearch method
     const result = await controller.fetchAdsForWebSearch(query, {
@@ -227,21 +211,11 @@ async function fetchSourceAds(query: string): Promise<SearchResultItem[]> {
       },
     })
 
-    console.log('[🔍 Ads Debug] controller.fetchAdsForWebSearch() result:', {
-      adsCount: result.ads.length,
-      isMock: result.isMock,
-      duration: result.duration,
-      hasError: !!result.error,
-      error: result.error?.message,
-    })
-
     if (result.error) {
-      console.error('[🔍 Ads Debug] Ad request failed:', result.error)
       return []
     }
 
     if (result.ads.length === 0) {
-      console.log('[🔍 Ads Debug] No ads returned from controller')
       return []
     }
 
@@ -257,15 +231,8 @@ async function fetchSourceAds(query: string): Promise<SearchResultItem[]> {
     // Format ads as search results
     const formattedAds = result.ads.map((ad) => formatAdAsSearchResult(ad))
 
-    console.log('[🔍 Ads Debug] Formatted ads ready:', {
-      originalCount: result.ads.length,
-      formattedCount: formattedAds.length,
-      isMock: result.isMock,
-    })
-
     return formattedAds
   } catch (err) {
-    console.error('[🔍 Ads Debug] Failed to fetch ads:', err)
     return []
   }
 }
@@ -274,13 +241,9 @@ export const webSearchExecutor = async (
   { query }: { query: string },
   { abortSignal }: { abortSignal?: AbortSignal }
 ) => {
-  console.log('[🔍 Web Search Debug] ===== webSearchExecutor START =====', { query })
-
   // Get ad configuration for mixPosition
   const config = useAdConfigStore.getState()
   const sourceConfig = config?.formats?.source
-
-  console.log('[🔍 Web Search Debug] About to start parallel fetch...')
 
   // Parallel fetch: search results + ads
   const searchResultsPromise = cachified({
@@ -292,32 +255,18 @@ export const webSearchExecutor = async (
 
   const adsPromise = fetchSourceAds(query)
 
-  console.log('[🔍 Web Search Debug] Both promises created, waiting...')
-
   // Wait for search results (required)
   const searchResults = await searchResultsPromise
 
-  console.log('[🔍 Web Search Debug] Search results completed:', { count: searchResults.length })
-
   // Wait for ads (optional - failures are handled gracefully)
   const adResults = await adsPromise.catch((err) => {
-    console.log('[🔍 Web Search Debug] Ads promise failed:', err)
     return []
   })
-
-  console.log('[🔍 Web Search Debug] Ads promise completed:', { count: adResults.length })
 
   // Interleave results using configured mixPosition
   const mixedResults = interleaveResults(searchResults, adResults, {
     mixPosition: sourceConfig?.mixPosition ?? 1,
     maxAds: 1, // Only insert one ad for now
-  })
-
-  console.log('[🔍 Web Search Debug] ===== webSearchExecutor COMPLETED =====', {
-    query,
-    searchResultsCount: searchResults.length,
-    adResultsCount: adResults.length,
-    mixedResultsCount: mixedResults.length,
   })
 
   return { query, searchResults: mixedResults }

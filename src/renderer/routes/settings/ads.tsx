@@ -42,6 +42,7 @@ import {
   IconSettings,
   IconAlertCircle,
   IconX,
+  IconLink,
 } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState, useEffect, useRef } from 'react'
@@ -660,6 +661,41 @@ function FormatConfigSection({ config, onChange }: FormatConfigSectionProps) {
             />
           </Accordion.Panel>
         </Accordion.Item>
+
+        {/* Entity Link 格式 */}
+        <Accordion.Item value="entityLink">
+          <Accordion.Control>
+            <Group justify="space-between" w="100%">
+              <Group gap="sm">
+                <Switch
+                  size="sm"
+                  checked={config.formats.entityLink?.enabled ?? false}
+                  onChange={(e) => {
+                    e.stopPropagation()
+                    onChange({
+                      formats: {
+                        ...config.formats,
+                        entityLink: { ...(config.formats.entityLink || { badgeStyle: 'subtle', overlapStrategy: 'longest', maxLinks: 3, minConfidence: 0.7, placement: 'inline', frequency: 5, maxPerSession: 5 }), enabled: e.currentTarget.checked }
+                      }
+                    })
+                  }}
+                />
+                <Text fw={500}>🔗 Entity Link (实体链接广告)</Text>
+              </Group>
+              {(config.formats.entityLink?.enabled ?? false) && (
+                <Badge size="xs" color="green">已启用</Badge>
+              )}
+            </Group>
+          </Accordion.Control>
+          <Accordion.Panel>
+            <EntityLinkFormatConfig
+              config={config.formats.entityLink ?? { enabled: false, badgeStyle: 'subtle', overlapStrategy: 'longest', maxLinks: 3, minConfidence: 0.7, placement: 'inline', frequency: 5, maxPerSession: 5 }}
+              onChange={(updates) => onChange({
+                formats: { ...config.formats, entityLink: { ...(config.formats.entityLink || { badgeStyle: 'subtle', overlapStrategy: 'longest', maxLinks: 3, minConfidence: 0.7, placement: 'inline', frequency: 5, maxPerSession: 5 }), ...updates } }
+              })}
+            />
+          </Accordion.Panel>
+        </Accordion.Item>
       </Accordion>
     </Stack>
   )
@@ -940,6 +976,156 @@ function LeadGenFormatConfig({ config, onChange }: { config: any; onChange: (upd
           </Group>
         ))}
       </Stack>
+    </Stack>
+  )
+}
+
+function EntityLinkFormatConfig({ config, onChange }: { config: any; onChange: (updates: any) => void }) {
+  return (
+    <Stack gap="md">
+      <Alert variant="light" color="blue" icon={<IconLink size={16} />}>
+        <Stack gap="xs">
+          <Text size="sm" fw={500}>实体链接广告 (Entity Link)</Text>
+          <Text size="xs" c="dimmed">
+            在 AI 响应内容中识别产品、品牌等实体，自动添加联盟营销链接。此格式会直接修改消息内容的显示方式。
+          </Text>
+        </Stack>
+      </Alert>
+
+      <SimpleGrid cols={{ base: 1, sm: 2 }}>
+        <Select
+          label="徽章样式"
+          description="链接徽章的显示方式"
+          data={[
+            { value: 'subtle', label: '微弱 (†)' },
+            { value: 'hover', label: '悬停显示' },
+            { value: 'explicit', label: '明确标记' },
+            { value: 'none', label: '无标记' },
+          ]}
+          value={config.badgeStyle}
+          onChange={(value) => onChange({ badgeStyle: value || 'subtle' })}
+        />
+
+        <Select
+          label="重叠策略"
+          description="多个实体重叠时的处理方式"
+          data={[
+            { value: 'longest', label: '优先长实体' },
+            { value: 'first', label: '优先第一个' },
+            { value: 'all', label: '全部标记' },
+          ]}
+          value={config.overlapStrategy}
+          onChange={(value) => onChange({ overlapStrategy: value || 'longest' })}
+        />
+
+        <NumberInput
+          label="最大链接数"
+          description="单次响应最多添加的链接数"
+          value={config.maxLinks}
+          onChange={(value) => onChange({ maxLinks: value || 3 })}
+          min={1}
+          max={10}
+        />
+
+        <NumberInput
+          label="最小置信度"
+          description="实体识别的最小置信度阈值 (0-1)"
+          value={config.minConfidence}
+          onChange={(value) => onChange({ minConfidence: value || 0.7 })}
+          min={0}
+          max={1}
+          step={0.05}
+          decimalScale={2}
+        />
+
+        <Select
+          label="展示位置"
+          description="链接的展示方式"
+          data={[
+            { value: 'inline', label: '内联替换（替换原始文本）' },
+            { value: 'below_message', label: '消息下方（列出所有实体）' },
+          ]}
+          value={config.placement}
+          onChange={(value) => onChange({ placement: value || 'inline' })}
+        />
+
+        <NumberInput
+          label="展示频率"
+          description="每N条消息展示一次"
+          value={config.frequency}
+          onChange={(value) => onChange({ frequency: value || 5 })}
+          min={1}
+          max={20}
+        />
+
+        <NumberInput
+          label="每会话最多展示"
+          value={config.maxPerSession}
+          onChange={(value) => onChange({ maxPerSession: value || 5 })}
+          min={1}
+          max={20}
+        />
+      </SimpleGrid>
+
+      <Card withBorder padding="sm" bg="gray.0">
+        <Stack gap="xs">
+          <Text size="xs" fw={500} c="dimmed">样式预览</Text>
+          <div style={{ padding: '8px', background: 'white', borderRadius: '4px' }}>
+            {config.badgeStyle === 'subtle' && (
+              <Text size="sm">
+                你可以试试 <span style={{ borderBottom: '1px dotted #228be6', cursor: 'pointer' }}>iPhone 15 Pro</span>，它的性能很不错。
+              </Text>
+            )}
+            {config.badgeStyle === 'hover' && (
+              <Text size="sm">
+                你可以试试 <span style={{ position: 'relative' }}>iPhone 15 Pro<span style={{
+                  position: 'absolute',
+                  top: '-20px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: '#228be6',
+                  color: 'white',
+                  padding: '2px 6px',
+                  borderRadius: '3px',
+                  fontSize: '10px',
+                  opacity: 0,
+                  transition: 'opacity 0.2s'
+                }}>广告</span></span>，它的性能很不错。
+              </Text>
+            )}
+            {config.badgeStyle === 'explicit' && (
+              <Text size="sm">
+                你可以试试 <span style={{
+                  background: '#fff3cd',
+                  padding: '2px 4px',
+                  borderRadius: '3px',
+                  border: '1px solid #ffc107'
+                }}>[广告] iPhone 15 Pro</span>，它的性能很不错。
+              </Text>
+            )}
+            {config.badgeStyle === 'none' && (
+              <Text size="sm">
+                你可以试试 <span style={{ color: '#228be6', textDecoration: 'underline' }}>iPhone 15 Pro</span>，它的性能很不错。
+              </Text>
+            )}
+          </div>
+        </Stack>
+      </Card>
+
+      <Alert variant="light" color="gray" icon={<IconInfoCircle size={14} />}>
+        <Stack gap="xs">
+          <Text size="xs" fw={500}>配置建议</Text>
+          <Text size="xs" c="dimmed">
+            • <b>链接密度：</b>建议每100字不超过2个链接，避免影响阅读体验
+          </Text>
+          <Text size="xs" c="dimmed">
+            • <b>置信度设置：</b>较高的置信度(0.8+)可减少误识别，但可能漏掉部分实体
+          </Text>
+          <Text size="xs" c="dimmed">
+            • <b>徽章样式：</b>subtle 模式干扰最小，explicit 模式透明度最高
+          </Text>
+        </Stack>
+      </Alert>
     </Stack>
   )
 }

@@ -328,8 +328,6 @@ export class ImprovedAdCacheManager {
     this.cache.clear();
     this.head = null;
     this.tail = null;
-
-    console.log('[ImprovedAdCacheManager] Cleared all cache', { previousSize: size });
   }
 
   /**

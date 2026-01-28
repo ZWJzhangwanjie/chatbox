@@ -100,17 +100,6 @@ const SearchResultCard: FC<{ index: number; result: SearchResultItem }> = ({ ind
 
   const isAd = result._isAd ?? false
 
-  // Debug logging for ads
-  if (isAd) {
-    console.log('[🔍 Ads Debug] SearchResultCard rendering ad:', {
-      index,
-      title: result.title,
-      _isAd: result._isAd,
-      _type: result._type,
-      showSponsoredLabel,
-    })
-  }
-
   // For ads, use the click tracking URL; for regular results, use the original link
   const href = isAd && result._clickUrl
     ? getSafeExternalHref(result._clickUrl)
@@ -179,12 +168,6 @@ const SearchResultCard: FC<{ index: number; result: SearchResultItem }> = ({ ind
 const WebSearchToolCallUI: FC<{ part: WebBrowsingToolCallPart }> = ({ part }) => {
   const { t } = useTranslation()
   const [expaned, setExpand] = useState(false)
-
-  console.log('[🔍 Web Search Debug] WebSearchToolCallUI rendered:', {
-    query: part.args?.query,
-    hasResult: !!part.result,
-    resultCount: part.result?.searchResults?.length ?? 0,
-  })
 
   // Check if results contain ads or if we should use CitationDisplay format
   const hasAds = part.result?.searchResults.some(r => r._isAd) ?? false
@@ -286,12 +269,6 @@ const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
 }
 
 export const ToolCallPartUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
-  console.log('[🔍 Web Search Debug] ToolCallPartUI rendered:', {
-    toolName: part.toolName,
-    state: part.state,
-    hasResult: !!part.result,
-  })
-
   if (part.toolName === 'web_search') {
     const parsedPart = WebBrowsingToolCallPartSchema.safeParse(part)
     if (parsedPart.success) {

@@ -160,6 +160,16 @@ export const useAdConfigStore = create<AdConfigState>()(
               },
             ],
           },
+          entityLink: {
+            enabled: false,
+            badgeStyle: 'subtle',
+            overlapStrategy: 'longest',
+            maxLinks: 3,
+            minConfidence: 0.7,
+            placement: 'inline',
+            frequency: 5,
+            maxPerSession: 5,
+          },
         },
         privacy: {
           enabled: true,
@@ -501,6 +511,21 @@ export function showAdConfig() {
 }
 
 /**
+ * 🔧 调试辅助函数 - 清除广告缓存
+ *
+ * 使用方法：
+ * 1. 打开浏览器控制台
+ * 2. 输入: clearAdCache()
+ */
+export function clearAdCache() {
+  // 动态导入 useAds 以清除缓存
+  import('../hooks/useAds').then(({ clearAllAdsCache }) => {
+    clearAllAdsCache();
+    console.log('[🔧 Debug] ✅ Ad cache cleared');
+  });
+}
+
+/**
  * 🔧 调试辅助函数 - 重置频率计数器
  */
 export function resetAdFrequency() {
@@ -512,15 +537,46 @@ export function resetAdFrequency() {
   return keys.length;
 }
 
+/**
+ * 🔧 调试辅助函数 - 重置为默认配置（包含 entityLink）
+ *
+ * 使用方法：
+ * 1. 打开浏览器控制台
+ * 2. 输入: resetAdConfigToDefaults()
+ * 3. 刷新页面
+ */
+export function resetAdConfigToDefaults() {
+  const state = useAdConfigStore.getState();
+  console.log('[🔧 Debug] Current config before reset:', {
+    hasEntityLink: !!state.formats.entityLink,
+    entityLinkEnabled: state.formats.entityLink?.enabled,
+  });
+
+  // 重置为默认配置（现在包含 entityLink）
+  state.resetConfig();
+
+  console.log('[🔧 Debug] ✅ Config reset to defaults:', {
+    hasEntityLink: !!state.formats.entityLink,
+    entityLinkEnabled: state.formats.entityLink?.enabled,
+    entityLinkBadgeStyle: state.formats.entityLink?.badgeStyle,
+  });
+
+  return state.formats;
+}
+
 // 将调试函数暴露到 window 对象（仅在开发模式）
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   (window as any).enableSourceAds = enableSourceAds;
   (window as any).showAdConfig = showAdConfig;
+  (window as any).clearAdCache = clearAdCache;
   (window as any).resetAdFrequency = resetAdFrequency;
+  (window as any).resetAdConfigToDefaults = resetAdConfigToDefaults;
   console.log('[🔧 Debug] Ad debugging functions available:');
-  console.log('  - enableSourceAds()   : 启用 source 广告');
-  console.log('  - showAdConfig()      : 显示当前广告配置');
-  console.log('  - resetAdFrequency()  : 重置频率计数器');
+  console.log('  - enableSourceAds()        : 启用 source 广告');
+  console.log('  - showAdConfig()           : 显示当前广告配置');
+  console.log('  - clearAdCache()           : 清除广告缓存');
+  console.log('  - resetAdFrequency()       : 重置频率计数器');
+  console.log('  - resetAdConfigToDefaults(): 重置为默认配置（包含 entityLink）');
 }
 
 /**

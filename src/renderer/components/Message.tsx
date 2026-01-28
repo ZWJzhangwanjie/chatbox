@@ -57,6 +57,7 @@ import { ThinkIndicator } from '@/packages/aiFeatures/thinkMode'
 import { MessageSuffixAd, AdIntegrationData } from '@/packages/ads/components/MessageAdIntegration'
 import { LeadGenSlot } from '@/packages/ads/components/AdSlot'
 import { useAdConfig } from '@/packages/ads/hooks/useAdConfig'
+import { useEntityLink, EntityLinkMarkdown } from '@/packages/ads/entity-link'
 
 interface Props {
   id?: string
@@ -109,6 +110,9 @@ const _Message: FC<Props> = (props) => {
 
   // AI Ad Network - 获取配置（必须在顶层调用）
   const adConfig = useAdConfig()
+
+  // AI Ad Network - Entity Link Hook
+  const { enhancements: entityLinkEnhancements, isEnabled: isEntityLinkEnabled } = useEntityLink(adData)
 
   const contentLength = useMemo(() => {
     return getMessageText(msg).length
@@ -278,16 +282,6 @@ const _Message: FC<Props> = (props) => {
 
   const contentParts = msg.contentParts || []
 
-  // Debug: Check for tool-call parts
-  const toolCallParts = contentParts.filter((p) => p.type === 'tool-call')
-  if (toolCallParts.length > 0) {
-    console.log('[🔍 Web Search Debug] Message has tool-call parts:', {
-      messageId: msg.id,
-      toolCallCount: toolCallParts.length,
-      toolNames: toolCallParts.map((p) => (p as any).toolName),
-    })
-  }
-
   const CollapseButton = (
     <span
       className="cursor-pointer inline-block font-bold text-blue-500 hover:text-white hover:bg-blue-500"
@@ -432,14 +426,15 @@ const _Message: FC<Props> = (props) => {
                       ) : item.type === 'text' ? (
                         <div key={`text-${msg.id}-${index}`}>
                           {enableMarkdownRendering && !isCollapsed ? (
-                            <Markdown
+                            <EntityLinkMarkdown
+                              text={item.text || ''}
+                              enhancements={entityLinkEnhancements}
+                              enabled={isEntityLinkEnabled}
                               uniqueId={`${msg.id}-${index}`}
                               enableLaTeXRendering={enableLaTeXRendering}
                               enableMermaidRendering={enableMermaidRendering}
                               generating={msg.generating}
-                            >
-                              {item.text || ''}
-                            </Markdown>
+                            />
                           ) : (
                             <div className="break-words whitespace-pre-line">
                               {needCollapse && isCollapsed ? `${item.text.slice(0, collapseThreshold)}...` : item.text}

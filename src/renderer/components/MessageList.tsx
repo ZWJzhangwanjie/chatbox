@@ -90,12 +90,24 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
 
   // 构建广告触发上下文（用于获取所有格式的广告）
   const adContext = useMemo<AdTriggerContext | undefined>(() => {
+    console.log('[MessageList] adContext useMemo called:', {
+      hasMessages: !!(currentMessageList && currentMessageList.length > 0),
+      messageCount: currentMessageList?.length || 0,
+    })
+
     if (!currentMessageList || currentMessageList.length === 0) {
+      console.log('[MessageList] adContext: No messages, returning undefined')
       return undefined
     }
 
     // 使用最后一条消息构建 context
     const lastMessage = currentMessageList[currentMessageList.length - 1]
+
+    console.log('[MessageList] Last message:', {
+      role: lastMessage?.role,
+      generating: lastMessage?.generating,
+      isAssistant: lastMessage?.role === 'assistant',
+    })
 
     // ⚠️ 关键修复：只有当最后一条是 assistant 消息且不在生成中时才触发
     // 这确保了：
@@ -103,6 +115,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
     // 2. response 有完整内容
     // 3. 不会在用户刚发送消息后就触发（此时最后一条是 user 消息）
     if (lastMessage?.role !== 'assistant' || lastMessage?.generating) {
+      console.log('[MessageList] adContext: Last message not ready (not assistant or still generating)')
       return undefined
     }
 
@@ -118,8 +131,16 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
 
     const assistantResponse = getMessageText(lastMessage) || ''
 
+    console.log('[MessageList] Query and response:', {
+      hasQuery: !!userQuery,
+      hasResponse: !!assistantResponse,
+      queryLength: userQuery.length,
+      responseLength: assistantResponse.length,
+    })
+
     // 只有当有有效的 query 和 response 时才返回 context
     if (!userQuery || !assistantResponse) {
+      console.log('[MessageList] adContext: Missing query or response')
       return undefined
     }
 
@@ -129,6 +150,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
       content: getMessageText(msg) || '',
     }))
 
+    console.log('[MessageList] ✅ adContext created successfully')
     return {
       currentMessage: {
         query: userQuery,
@@ -148,9 +170,9 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
   }, [currentSession, currentMessageList, userData])
 
   // 统一获取所有广告数据（每个 session 只请求一次）
-  // 指定 MessageList 场景需要的格式：action_card、suffix、followup、lead_gen
+  // 指定 MessageList 场景需要的格式：action_card、suffix、followup、lead_gen、entity_link
   const { allAds, slots, getAdsBySlot, getSlot } = useAds(adContext, {
-    formats: ['action_card', 'suffix', 'followup', 'lead_gen'],
+    formats: ['action_card', 'suffix', 'followup', 'lead_gen', 'entity_link'],
   })
 
   // 使用 useRef 稳定函数引用，避免因函数引用变化导致 adData 重新创建

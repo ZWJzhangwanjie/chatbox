@@ -30,6 +30,10 @@ import { ImprovedAdCacheManager } from './ImprovedAdCacheManager';
 import { DebounceCacheManager } from './DebounceCacheManager';
 import storage from '../../../storage';
 
+// SDK ClientInfo 集成
+import { getSdkClientInfo } from '../sdk/clientInfoAdapter';
+import type { SdkClientInfo } from '../sdk/clientInfoAdapter';
+
 // ============================================================================
 // 类型定义
 // ============================================================================
@@ -168,7 +172,16 @@ export class AdController {
    * ```
    */
   shouldTrigger(context: AdTriggerContext): TriggerCheckResult {
-    // 调试日志：显示配置状态
+    // 🔧 基础日志（始终输出，用于诊断）
+    console.log('[AdController] shouldTrigger called:', {
+      globalEnabled: this.config.enabled,
+      debugMode: this.config.debug,
+      hasQuery: !!context.currentMessage.query,
+      hasResponse: !!context.currentMessage.response,
+      isStreaming: context.currentMessage.isStreaming,
+    });
+
+    // 详细调试日志（仅在 debug 模式）
     if (this.config.debug) {
       console.log('[AdController] shouldTrigger check:', {
         enabled: this.config.enabled,
@@ -182,6 +195,7 @@ export class AdController {
 
     // 1. 检查全局开关
     if (!this.config.enabled) {
+      console.log('[AdController] ❌ Blocked: Ad system is disabled');
       if (this.config.debug) {
         console.log('[AdController] ❌ Ad system is disabled');
       }
@@ -193,9 +207,7 @@ export class AdController {
 
     // 2. 检查调试模式 - 只要在调试模式就显示（不强制要求 useMock）
     if (this.config.debug) {
-      if (this.config.debug) {
-        console.log('[AdController] ✅ Debug mode enabled, forcing ad display');
-      }
+      console.log('[AdController] ✅ Debug mode enabled, bypassing all checks');
       return {
         shouldTrigger: true,
         reason: 'Debug mode enabled',
@@ -205,7 +217,9 @@ export class AdController {
 
     // 3. 检查是否有启用的广告格式
     const activeFormats = this.getActiveFormats();
+    console.log('[AdController] Active formats:', activeFormats);
     if (activeFormats.length === 0) {
+      console.log('[AdController] ❌ Blocked: No ad formats are enabled');
       if (this.config.debug) {
         console.log('[AdController] ❌ No ad formats are enabled');
       }
@@ -216,7 +230,10 @@ export class AdController {
     }
 
     // 4. 检查频率控制
-    if (!this.frequencyController.shouldShow()) {
+    const frequencyResult = this.frequencyController.shouldShow();
+    console.log('[AdController] Frequency check result:', frequencyResult);
+    if (!frequencyResult) {
+      console.log('[AdController] ❌ Blocked: Frequency limit not reached');
       if (this.config.debug) {
         console.log('[AdController] ❌ Frequency limit not reached');
       }
@@ -228,6 +245,7 @@ export class AdController {
 
     // 5. 检查消息是否为空
     if (!context.currentMessage.query && !context.currentMessage.response) {
+      console.log('[AdController] ❌ Blocked: Empty message content');
       if (this.config.debug) {
         console.log('[AdController] ❌ Empty message content');
       }
@@ -239,6 +257,7 @@ export class AdController {
 
     // 6. 检查是否正在流式输出
     if (context.currentMessage.isStreaming) {
+      console.log('[AdController] ❌ Blocked: Response is still streaming');
       if (this.config.debug) {
         console.log('[AdController] ❌ Response is still streaming');
       }
@@ -249,6 +268,7 @@ export class AdController {
     }
 
     // 所有检查通过
+    console.log('[AdController] ✅ All checks passed, triggering ad with formats:', activeFormats);
     if (this.config.debug) {
       console.log('[AdController] ✅ All checks passed, triggering ad');
     }
@@ -593,6 +613,32 @@ export class AdController {
         };
       }
 
+      // ========== SDK ClientInfo 采集 ==========
+      let sdkClientInfo: SdkClientInfo | null = null;
+
+      if (this.config.api.useSdkClientInfo !== false) { // 默认启用
+        try {
+          sdkClientInfo = await getSdkClientInfo();
+
+          if (this.config.debug && sdkClientInfo) {
+            console.log('[AdController] SDK ClientInfo collected:', {
+              hasDevice: !!sdkClientInfo.device,
+              hasApp: !!sdkClientInfo.app,
+              hasUser: !!sdkClientInfo.user,
+              hasGeo: !!sdkClientInfo.geo,
+              deviceOS: sdkClientInfo.device?.os,
+              deviceType: sdkClientInfo.device?.devicetype,
+              appBundle: sdkClientInfo.app?.bundle,
+              userId: sdkClientInfo.user?.id?.substring(0, 8) + '...',
+              country: sdkClientInfo.geo?.country,
+            });
+          }
+        } catch (error) {
+          console.warn('[AdController] Failed to collect SDK ClientInfo, proceeding without it:', error);
+          // 继续执行，不阻断广告请求
+        }
+      }
+
       // 构建符合真实 API 期望格式的请求体
       // 格式参考：http://localhost:5173/api/v1/ads/request
       // 注意：不传 intent 字段，让后端自动识别用户意图
@@ -606,8 +652,9 @@ export class AdController {
         userContext: {
           sessionId: sessionId,
           demographics: {
-            country: 'US',
-            language: 'en',
+            // 优先使用 SDK 的 geo 信息
+            country: sdkClientInfo?.geo?.country || 'US',
+            language: sdkClientInfo?.geo?.language || sdkClientInfo?.device?.language || 'en',
           },
           // 高级数据：用户记忆（如果配置启用）
           ...(advancedData.userMemory && { memory: advancedData.userMemory }),
@@ -615,12 +662,17 @@ export class AdController {
           ...(advancedData.userProfile && { profile: advancedData.userProfile }),
         },
 
+        // ========== 新增：SDK ClientInfo 字段 ==========
+        ...(sdkClientInfo && { clientInfo: sdkClientInfo }),
+
         // 调试：输出最终请求体中的 userContext
         ...(this.config.debug && {
           __debug: {
             hasUserMemory: !!advancedData.userMemory,
             userMemoryKeys: advancedData.userMemory ? Object.keys(advancedData.userMemory) : [],
             hasUserProfile: !!advancedData.userProfile,
+            hasClientInfo: !!sdkClientInfo,
+            clientInfoKeys: sdkClientInfo ? Object.keys(sdkClientInfo) : [],
           },
         }),
         slots: formats.map((format) => {
@@ -679,6 +731,26 @@ export class AdController {
               formatOptions = {
                 fields: this.config.formats.leadGen.fields,
               };
+              break;
+            case 'entity_link':
+            case 'entityLink':
+              formatVariant = this.config.formats.entityLink.badgeStyle || 'subtle';
+              formatOptions = {
+                maxLinks: this.config.formats.entityLink.maxLinks,
+                minConfidence: this.config.formats.entityLink.minConfidence,
+                badgeStyle: this.config.formats.entityLink.badgeStyle,
+                overlapStrategy: this.config.formats.entityLink.overlapStrategy,
+                placement: this.config.formats.entityLink.placement,
+              };
+              if (this.config.debug) {
+                console.log('[AdController] EntityLink config:', {
+                  badgeStyle: formatVariant,
+                  maxLinks: formatOptions.maxLinks,
+                  minConfidence: formatOptions.minConfidence,
+                  overlapStrategy: formatOptions.overlapStrategy,
+                  placement: formatOptions.placement,
+                });
+              }
               break;
           }
 
@@ -1317,6 +1389,58 @@ export class AdController {
         break;
       }
 
+      case 'entity_link':
+      case 'entityLink': {
+        const entityLinkConfig = this.config.formats.entityLink;
+        // 从响应文本中提取一些示例实体
+        const responseText = context.currentMessage.response || '';
+        const mockEntities: any[] = [];
+
+        // 根据常见产品/品牌生成模拟实体
+        const mockProductPatterns = [
+          { text: 'iPhone', type: 'product' as const, url: 'https://example.com/iphone' },
+          { text: 'MacBook', type: 'product' as const, url: 'https://example.com/macbook' },
+          { text: 'Sony', type: 'brand' as const, url: 'https://example.com/sony' },
+          { text: 'Samsung', type: 'brand' as const, url: 'https://example.com/samsung' },
+          { text: 'ChatGPT', type: 'product' as const, url: 'https://example.com/chatgpt' },
+          { text: 'Notion', type: 'product' as const, url: 'https://example.com/notion' },
+        ];
+
+        let entityIndex = 0;
+        for (const pattern of mockProductPatterns) {
+          const pos = responseText.indexOf(pattern.text);
+          if (pos !== -1 && entityIndex < (entityLinkConfig.maxLinks || 3)) {
+            mockEntities.push({
+              text: pattern.text,
+              type: pattern.type,
+              startPosition: pos,
+              endPosition: pos + pattern.text.length,
+              confidence: 0.85,
+              category: 'technology',
+              brand: pattern.type === 'brand' ? pattern.text : undefined,
+              affiliateUrl: pattern.url,
+              trackingId: `mock_track_${entityIndex}`,
+            });
+            entityIndex++;
+          }
+        }
+
+        baseAd.content = {
+          // 使用与 API 相同的结构
+          entities: mockEntities,
+          replacements: mockEntities.map((e: any) => ({
+            originalText: e.text,
+            affiliateUrl: e.affiliateUrl,
+            trackingId: e.trackingId,
+          })),
+          maxLinks: entityLinkConfig.maxLinks || 3,
+          minConfidence: entityLinkConfig.minConfidence || 0.7,
+          badgeStyle: entityLinkConfig.badgeStyle || 'subtle',
+          overlapStrategy: entityLinkConfig.overlapStrategy || 'longest',
+        };
+        break;
+      }
+
       default:
         return null;
     }
@@ -1338,6 +1462,7 @@ export class AdController {
     if (this.config.formats.source.enabled) formats.push('source');
     if (this.config.formats.static.enabled) formats.push('static');
     if (this.config.formats.leadGen.enabled) formats.push('lead_gen');
+    if (this.config.formats.entityLink.enabled) formats.push('entity_link');
 
     return formats;
   }

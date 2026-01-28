@@ -83,18 +83,6 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
     return () => clearTimeout(timer);
   }, []);
 
-  // 调试日志
-  console.log('[AI Features SuggestionChips] Rendering', {
-    suggestionsCount: suggestions.length,
-    loading,
-    suggestions,
-    isVisible,
-    adEnabled: isAdEnabled,
-    followUpAdEnabled: isFollowUpAdEnabled,
-    shouldInsertAd,
-    adInsertPosition,
-  });
-
   if (loading) {
     return <div style={{ padding: '16px', color: '#9ca3af', fontSize: '14px', textAlign: 'center', background: 'yellow', border: '2px solid red' }}>加载建议中...</div>;
   }
@@ -106,7 +94,6 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
 
   // 按类型分组
   const grouped = groupByType(suggestions);
-  console.log('[AI Features SuggestionChips] Grouped suggestions', grouped);
 
   // 创建一个带全局索引的扁平数组，用于广告插入
   const flattenedItems = useMemo(() => {
@@ -157,14 +144,6 @@ export const SuggestionChips: React.FC<SuggestionChipsProps> = ({
               const itemData = flattenedItems.find(item => item.suggestion.id === suggestion.id);
               const currentIndex = itemData?.globalIndex ?? -1;
               const shouldShowAd = shouldInsertAd && currentIndex === adInsertPosition;
-
-              console.log('[AI Features SuggestionChips] Item render', {
-                type,
-                index,
-                currentIndex,
-                adInsertPosition,
-                shouldShowAd,
-              });
 
               return (
                 <React.Fragment key={suggestion.id}>

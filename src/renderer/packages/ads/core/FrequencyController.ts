@@ -84,6 +84,7 @@ export class FrequencyController {
       'source',
       'static',
       'leadGen',
+      'entityLink',
     ];
 
     formats.forEach((format) => {
@@ -287,6 +288,7 @@ export class FrequencyController {
     if (this.config.formats.source.enabled) formats.push('source');
     if (this.config.formats.static.enabled) formats.push('static');
     if (this.config.formats.leadGen.enabled) formats.push('leadGen');
+    if (this.config.formats.entityLink.enabled) formats.push('entityLink');
 
     return formats;
   }
@@ -312,6 +314,8 @@ export class FrequencyController {
       static: 'static',
       leadGen: 'leadGen',
       lead_gen: 'leadGen',
+      entityLink: 'entityLink',
+      entity_link: 'entityLink',
     };
 
     const configKey = formatKeyMap[format] || format as keyof AdConfig['formats'];

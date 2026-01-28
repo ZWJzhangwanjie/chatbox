@@ -512,6 +512,86 @@ export interface DataCollectionResult {
 }
 
 // ============================================================================
+// Entity Link 类型定义
+// ============================================================================
+
+/**
+ * 实体信息
+ *
+ * 从文本中识别的产品、品牌、服务等实体
+ */
+export interface EntityInfo {
+  /** 实体文本 */
+  text: string;
+  /** 实体类型 */
+  type: 'product' | 'brand' | 'service' | 'category';
+  /** 在文本中的起始位置 */
+  startPosition: number;
+  /** 在文本中的结束位置 */
+  endPosition: number;
+  /** 识别置信度 (0-1) */
+  confidence: number;
+  /** 产品分类 */
+  category?: string;
+  /** 品牌名称 */
+  brand?: string;
+  /** 联盟链接 URL */
+  affiliateUrl?: string;
+  /** 追踪 ID */
+  trackingId?: string;
+}
+
+/**
+ * 链接替换
+ *
+ * 用于替换原始文本的链接信息
+ */
+export interface LinkReplacement {
+  /** 原始文本 */
+  originalText: string;
+  /** 联盟链接 URL */
+  affiliateUrl: string;
+  /** 追踪 ID */
+  trackingId?: string;
+}
+
+/**
+ * Entity Link 广告内容
+ *
+ * 包含实体识别结果和链接替换信息
+ */
+export interface EntityLinkAdContent {
+  /** 识别的实体列表 */
+  entities: EntityInfo[];
+  /** 链接替换列表 */
+  replacements: LinkReplacement[];
+  /** 最大链接数 */
+  maxLinks?: number;
+  /** 徽章样式 */
+  badgeStyle?: 'subtle' | 'hover' | 'explicit' | 'none';
+  /** 重叠策略 */
+  overlapStrategy?: 'longest' | 'first' | 'all';
+}
+
+/**
+ * Entity Link 增强配置
+ *
+ * 用于 EnhancedContent 组件的配置
+ */
+export interface EntityLinkEnhancements {
+  /** 识别的实体 */
+  entities: EntityInfo[];
+  /** 链接替换 */
+  replacements: LinkReplacement[];
+  /** 最大链接数 */
+  maxLinks?: number;
+  /** 徽章样式 */
+  badgeStyle?: 'subtle' | 'hover' | 'explicit' | 'none';
+  /** 重叠策略 */
+  overlapStrategy?: 'longest' | 'first' | 'all';
+}
+
+// ============================================================================
 // 导出
 // ============================================================================
 

@@ -307,7 +307,11 @@ export function EnhancedContent({
         }
 
         const entity = segment.entity
-        const url = entity.affiliateUrl || ''
+        // 优先使用 entity.affiliateUrl，如果没有则从 replacements 中查找
+        const url =
+          entity.affiliateUrl ||
+          enhancements?.replacements?.find((r) => r.originalText === entity.text)?.affiliateUrl ||
+          ''
 
         return (
           <EntityBadge

@@ -786,7 +786,6 @@ export class AdController {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.config.api.apiKey}`,
           'X-API-Key': this.config.api.apiKey,
         },
         body: JSON.stringify(requestBody),

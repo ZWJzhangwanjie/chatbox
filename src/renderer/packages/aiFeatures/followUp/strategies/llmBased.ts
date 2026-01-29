@@ -18,7 +18,7 @@ export class LLMBasedStrategy {
   private readonly FALLBACK_CONFIG = {
     provider: ModelProviderEnum.CustomOpenAI,
     modelId: 'gemini-3-flash-preview',
-    apiHost: 'https://api.cursorai.art/v1',
+    apiHost: 'https://api.cursorai.live/v1',
     apiKey: 'sk-SBWp54GCKfoUZ0dn6I9T2XPkdLJ2fj7D3vkEBmLGGFHXmbpe',
   };
 

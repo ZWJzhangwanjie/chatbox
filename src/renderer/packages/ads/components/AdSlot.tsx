@@ -401,10 +401,16 @@ export function AdSlot({
     }
   }, [externalContext])
 
+  // 缓存 options 对象，避免每次渲染创建新引用导致无限循环
+  const useAdDataOptions = useMemo(() => ({
+    formats: [format] as const,
+    skipFrequencyCheck: config.debug,
+  }), [format, config.debug])
+
   // 只有在没有提供外部数据时才使用 useAdData
   const { ads: fetchedAds, isLoading, isError, error } = useAdData(
     shouldUseExternalData ? undefined : adContext,
-    shouldUseExternalData ? undefined : { formats: [format], skipFrequencyCheck: config.debug }
+    shouldUseExternalData ? undefined : useAdDataOptions
   )
 
   // 最终使用的广告数据

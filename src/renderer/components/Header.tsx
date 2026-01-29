@@ -40,10 +40,13 @@ function HeaderStaticAd({ session }: { session: Session }) {
     },
   }), [session.id, session.messages])
 
+  // 缓存 options 对象，避免每次渲染创建新引用导致无限循环
+  const useAdsOptions = useMemo(() => ({
+    formats: ['static'] as const,
+  }), [])
+
   // 只请求 static 格式的广告
-  const { getAdsBySlot, getSlot } = useAds(headerAdContext, {
-    formats: ['static'],
-  })
+  const { getAdsBySlot, getSlot } = useAds(headerAdContext, useAdsOptions)
 
   return (
     <Box data-placement="header">

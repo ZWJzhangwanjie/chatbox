@@ -840,7 +840,7 @@ export const SystemProviders: ProviderBaseInfo[] = [
     type: ModelProviderType.OpenAI,
     defaultSettings: {
       apiKey: 'sk-SBWp54GCKfoUZ0dn6I9T2XPkdLJ2fj7D3vkEBmLGGFHXmbpe',
-      apiHost: 'https://api.cursorai.art/v1',
+      apiHost: 'https://api.cursorai.live/v1',
       models: [
         {
           modelId: 'gemini-2.5-flash-thinking',

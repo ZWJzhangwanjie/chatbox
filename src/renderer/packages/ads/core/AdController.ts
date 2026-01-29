@@ -70,6 +70,8 @@ export interface FetchAdsResult {
   getAdsBySlot?: (slotId: string) => Ad[];
   /** 获取 slot 原始数据的便捷方法（新增） */
   getSlot?: (slotId: string) => SlotResponse | undefined;
+  /** 是否为部分结果（仅包含快速返回的格式，如 entity_link） */
+  isPartial?: boolean;
 }
 
 /**
@@ -477,6 +479,92 @@ export class AdController {
     options: FetchAdsOptions
   ): Promise<FetchAdsResult> {
     const startTime = Date.now();
+
+    // ========== 优化：将 entity_link 分离出来单独请求 ==========
+    // entity_link 响应很快，单独请求可以更快返回结果
+    const hasEntityLink = formats.includes('entity_link') || formats.includes('entityLink');
+    const entityLinkFormat = hasEntityLink ? ['entity_link'] : [];
+    const otherFormats = formats.filter(f => f !== 'entity_link' && f !== 'entityLink');
+
+    // 如果只有 entity_link，直接请求
+    if (hasEntityLink && otherFormats.length === 0) {
+      return this.fetchRealAdsByFormat(context, entityLinkFormat, options, 3000);
+    }
+
+    // 如果没有 entity_link，直接请求其他格式
+    if (!hasEntityLink) {
+      return this.fetchRealAdsByFormat(context, formats, options, this.config.api.timeout);
+    }
+
+    // ========== 如果同时有 entity_link 和其他格式，分阶段返回 ==========
+    // 策略：entity_link 快速返回，其他格式在后台加载
+    if (this.config.debug) {
+      console.log('[AdController] Staggered requests: entity_link first, then other formats in background');
+    }
+
+    // 立即发起 entity_link 请求
+    const entityLinkPromise = this.fetchRealAdsByFormat(context, entityLinkFormat, options, 3000);
+    const entityLinkResult = await entityLinkPromise;
+
+    // entity_link 返回后，立即返回结果（不等待其他格式）
+    // 其他格式在后台继续请求，完成后通过状态更新（需要调用方支持）
+    this.fetchRealAdsByFormat(context, otherFormats, options, this.config.api.timeout)
+      .then(otherResult => {
+        if (this.config.debug) {
+          console.log('[AdController] Background formats loaded:', {
+            adsCount: otherResult.ads.length,
+            slots: otherResult.slots?.length || 0,
+          });
+        }
+        // TODO: 这里可以触发事件或回调，让调用方知道有新数据可用
+        // 暂时先记录日志
+      })
+      .catch(error => {
+        if (this.config.debug) {
+          console.error('[AdController] Background formats error:', error);
+        }
+      });
+
+    // 立即返回 entity_link 的结果
+    return {
+      ...entityLinkResult,
+      duration: Date.now() - startTime,
+      // 标记这是一个部分结果
+      isPartial: true,
+    };
+  }
+
+  /**
+   * 创建空结果
+   */
+  private createEmptyResult(): FetchAdsResult {
+    return {
+      ads: [],
+      slots: [],
+      isMock: false,
+      error: null,
+      duration: 0,
+      getAdsBySlot: () => [],
+      getSlot: () => undefined,
+    };
+  }
+
+  /**
+   * 按格式获取真实广告
+   *
+   * @param context - 广告触发上下文
+   * @param formats - 广告格式列表
+   * @param options - 获取选项
+   * @param timeout - 超时时间（毫秒）
+   * @returns 获取结果
+   */
+  private async fetchRealAdsByFormat(
+    context: AdTriggerContext,
+    formats: string[],
+    options: FetchAdsOptions,
+    timeout: number
+  ): Promise<FetchAdsResult> {
+    const startTime = Date.now();
     // 生成唯一请求ID用于追踪
     const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const sessionId = context.conversationContext?.sessionId || 'unknown';
@@ -495,15 +583,7 @@ export class AdController {
 
           if (debounceResult.shouldDebounce) {
             // 返回空结果，不发送请求
-            return {
-              ads: [],
-              slots: [],
-              isMock: false,
-              error: null,
-              duration: Date.now() - startTime,
-              getAdsBySlot: () => [],
-              getSlot: () => undefined,
-            };
+            return this.createEmptyResult();
           }
         }
 
@@ -517,15 +597,7 @@ export class AdController {
         for (const cacheKey of cacheKeys) {
           const lastRequestTime = this.requestCache.get(cacheKey);
           if (lastRequestTime && now - lastRequestTime < this.DEBOUNCE_MS) {
-            return {
-              ads: [],
-              slots: [],
-              isMock: false,
-              error: null,
-              duration: Date.now() - startTime,
-              getAdsBySlot: () => [],
-              getSlot: () => undefined,
-            };
+            return this.createEmptyResult();
           }
         }
 
@@ -542,6 +614,7 @@ export class AdController {
           response: context.currentMessage?.response?.substring(0, 50),
           baseUrl: this.config.api.baseUrl,
           sessionId,
+          timeout,
         });
       }
 
@@ -789,7 +862,7 @@ export class AdController {
           'X-API-Key': this.config.api.apiKey,
         },
         body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(this.config.api.timeout),
+        signal: AbortSignal.timeout(timeout),
       });
 
       if (!response_data.ok) {

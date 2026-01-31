@@ -921,6 +921,9 @@ export class AdController {
                 category: adapted.category || 'general',
                 ecpm: adapted.ecpm || 0,
                 source: 'external',
+                // 新增：保存 requestId 供 SDK 自动追踪使用
+                requestId: responseData.data.requestId,
+                slotId: slot.slotId,
               },
               // 保存后端返回的建议信息（如 layout）
               suggestions: slot.suggestions ? {
@@ -933,7 +936,7 @@ export class AdController {
 
       // ========== 新增：构建便捷方法的闭包 ==========
       // 创建一个转换函数，将 ApiAd 转换为 Ad（用于 getAdsBySlot）
-      const convertApiAdToAd = (apiAd: ApiAd, slotSuggestions?: SlotResponse['suggestions']): Ad => {
+      const convertApiAdToAd = (apiAd: ApiAd, slotId: string, slotSuggestions?: SlotResponse['suggestions']): Ad => {
         const original = apiAd.original || {};
         const adapted = apiAd.adapted || {};
         const tracking = apiAd.tracking || {};
@@ -955,6 +958,9 @@ export class AdController {
             category: adapted.category || 'general',
             ecpm: adapted.ecpm || 0,
             source: 'external',
+            // 新增：保存 requestId 和 slotId 供 SDK 自动追踪使用
+            requestId: responseData.data.requestId,
+            slotId: slotId,
           },
           suggestions: slotSuggestions ? {
             layout: slotSuggestions.layout,
@@ -968,7 +974,7 @@ export class AdController {
         if (!slot || slot.status !== 'filled' || !slot.ads) {
           return [];
         }
-        return slot.ads.map(apiAd => convertApiAdToAd(apiAd, slot.suggestions));
+        return slot.ads.map(apiAd => convertApiAdToAd(apiAd, slotId, slot.suggestions));
       };
 
       // getSlot: 获取原始 slot 响应

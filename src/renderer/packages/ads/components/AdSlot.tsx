@@ -107,6 +107,7 @@ export interface AdSlotProps {
 interface SDKAdWrapperProps {
   ad: Ad
   format: AdFormatType
+  slotId: string  // 新增：用于 SDK 自动追踪
   variant?: string
   onClick?: (ad: Ad) => void
 }
@@ -116,7 +117,7 @@ interface SDKAdWrapperProps {
  * 根据 format 类型选择对应的 SDK 组件
  * 添加额外的 className 以便应用 Chatbox 样式覆盖
  */
-const SDKAdWrapper = memo(({ ad, format, variant, onClick }: SDKAdWrapperProps) => {
+const SDKAdWrapper = memo(({ ad, format, slotId, variant, onClick }: SDKAdWrapperProps) => {
   // 获取配置
   const config = useAdConfig()
 
@@ -157,28 +158,28 @@ const SDKAdWrapper = memo(({ ad, format, variant, onClick }: SDKAdWrapperProps) 
         case 'action_card':
           return (
             <Suspense fallback={<AdLoadingSkeleton />}>
-              <SDKActionCardAd ad={ad} variant={variant as any} onClick={handleClick} />
+              <SDKActionCardAd ad={ad} slotId={slotId} variant={variant as any} onClick={handleClick} />
             </Suspense>
           )
 
         case 'suffix':
           return (
             <Suspense fallback={<AdLoadingSkeleton />}>
-              <SDKSuffixAd ad={ad} variant={variant as any} />
+              <SDKSuffixAd ad={ad} slotId={slotId} variant={variant as any} />
             </Suspense>
           )
 
         case 'followup':
           return (
             <Suspense fallback={<AdLoadingSkeleton />}>
-              <SDKFollowUpAd ad={ad} variant={variant as any} onClick={handleClick} />
+              <SDKFollowUpAd ad={ad} slotId={slotId} variant={variant as any} onClick={handleClick} />
             </Suspense>
           )
 
         case 'source':
           return (
             <Suspense fallback={<AdLoadingSkeleton />}>
-              <SDKSponsoredSourceAd ad={ad} variant={variant as any} onClick={handleClick} />
+              <SDKSponsoredSourceAd ad={ad} slotId={slotId} variant={variant as any} onClick={handleClick} />
             </Suspense>
           )
 
@@ -195,6 +196,7 @@ const SDKAdWrapper = memo(({ ad, format, variant, onClick }: SDKAdWrapperProps) 
               <div style={wrapperStyle} className="static-ad-size-wrapper">
                 <SDKStaticAd
                   ad={ad}
+                  slotId={slotId}
                   width={staticConfig.width}
                   height={staticConfig.height}
                 />
@@ -205,7 +207,7 @@ const SDKAdWrapper = memo(({ ad, format, variant, onClick }: SDKAdWrapperProps) 
         case 'lead_gen':
           return (
             <Suspense fallback={<AdLoadingSkeleton />}>
-              <SDKLeadGenAd ad={ad} />
+              <SDKLeadGenAd ad={ad} slotId={slotId} />
             </Suspense>
           )
 
@@ -322,12 +324,22 @@ export function AdSlot({
   ads: externalAds,
   allAds,
   context: externalContext,
-  slotId,
+  slotId: externalSlotId,
   getAdsBySlot,
   getSlot,
 }: AdSlotProps) {
   // 获取配置
   const config = useAdConfig()
+
+  // 生成或使用外部提供的 slotId
+  const finalSlotId = useMemo(() => {
+    if (externalSlotId) {
+      return externalSlotId
+    }
+    // 自动生成 slotId: slot-{format}-{placement}
+    const placementPart = placement ? `-${placement}` : ''
+    return `slot-${format}${placementPart}`
+  }, [externalSlotId, format, placement])
 
   // 从配置中获取默认的 variant（如果没有通过 props 传递）
   const variant = useMemo(() => {
@@ -357,16 +369,16 @@ export function AdSlot({
   // 1. 优先使用 ads 参数（指定格式的广告）
   // 2. 其次从 allAds 中过滤出当前格式的广告
   // 3. 最后才使用 useAdData 独立获取
-  const shouldUseExternalData = !!(externalAds || allAds || (slotId && getAdsBySlot))
+  const shouldUseExternalData = !!(externalAds || allAds || (externalSlotId && getAdsBySlot))
 
   // 使用工具函数获取该格式的所有别名（支持各种命名格式）
   const aliases = getAdFormatAliases(format)
 
   // 新增：使用 slotId 获取广告（如果提供了 slotId 和 getAdsBySlot）
   let adsFromSlot: Ad[] | undefined = undefined
-  if (slotId && getAdsBySlot && typeof getAdsBySlot === 'function') {
+  if (externalSlotId && getAdsBySlot && typeof getAdsBySlot === 'function') {
     try {
-      adsFromSlot = getAdsBySlot(slotId) || []
+      adsFromSlot = getAdsBySlot(externalSlotId) || []
     } catch (error) {
       console.error('[❌ AdSlot getAdsBySlot error]:', error)
       adsFromSlot = []
@@ -476,11 +488,12 @@ export function AdSlot({
         </Alert>
       )}
 
-      {displayAds.map((ad) => (
+      {displayAds.map((ad, index) => (
         <SDKAdWrapper
           key={ad.id}
           ad={ad}
           format={format}
+          slotId={finalSlotId}
           // 优先使用后端返回的 layout 建议，其次使用配置中的 variant
           variant={ad.suggestions?.layout || variant}
         />

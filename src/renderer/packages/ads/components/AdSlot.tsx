@@ -44,6 +44,9 @@ const SDKStaticAd = lazy(() =>
 const SDKLeadGenAd = lazy(() =>
   import('@ai-ad-network/frontend-sdk').then(m => ({ default: m.LeadGenAd }))
 )
+const SDKEntityLinkAd = lazy(() =>
+  import('@ai-ad-network/frontend-sdk').then(m => ({ default: m.EntityLinkAd }))
+)
 
 // ============================================================================
 // 组件 Props
@@ -59,6 +62,7 @@ export type AdFormatType =
   | 'source'
   | 'static'
   | 'lead_gen'
+  | 'entity_link'
 
 /**
  * AdSlot 组件 Props
@@ -208,6 +212,18 @@ const SDKAdWrapper = memo(({ ad, format, slotId, variant, onClick }: SDKAdWrappe
           return (
             <Suspense fallback={<AdLoadingSkeleton />}>
               <SDKLeadGenAd ad={ad} slotId={slotId} />
+            </Suspense>
+          )
+
+        case 'entity_link':
+          return (
+            <Suspense fallback={<AdLoadingSkeleton />}>
+              <SDKEntityLinkAd
+                ad={ad}
+                slotId={slotId}
+                variant={variant as any}
+                onEntityClick={handleClick}
+              />
             </Suspense>
           )
 

@@ -989,6 +989,64 @@ export class AdController {
         }
       }
 
+      // ========== 新增：设置 SDK 全局 analytics 数据供 EntityLinkAd 等简化组件使用 ==========
+      if (typeof window !== 'undefined' && responseData.data.requestId && slots.length > 0) {
+        // 构建 slotsMap：将 slotId 映射到广告数据
+        const slotsMap: Record<string, { ads: Ad[]; count: number }> = {};
+        for (const slot of slots) {
+          if (slot.status === 'filled' && slot.ads) {
+            // 将 ApiAd 转换为 Ad
+            const convertedAds = slot.ads.map(apiAd => convertApiAdToAd(apiAd, slot.slotId, slot.suggestions));
+            slotsMap[slot.slotId] = {
+              ads: convertedAds,
+              count: convertedAds.length
+            };
+          }
+        }
+
+        // 设置全局 analytics 对象
+        (window as any).__AD_ANALYTICS__ = {
+          requestId: responseData.data.requestId,
+          slotsMap: slotsMap,
+          getAdAnalytics: (adId: string, slotId?: string) => {
+            if (!slotId) {
+              // 如果没有指定 slotId，遍历所有 slot 查找
+              for (const [sid, slotInfo] of Object.entries(slotsMap)) {
+                const position = slotInfo.ads.findIndex(ad => ad.id === adId);
+                if (position !== -1) {
+                  return {
+                    requestId: responseData.data.requestId,
+                    slotId: sid,
+                    position,
+                    totalAds: slotInfo.count
+                  };
+                }
+              }
+              return null;
+            }
+            // 使用指定的 slotId
+            const slotInfo = slotsMap[slotId];
+            if (!slotInfo) return null;
+            const position = slotInfo.ads.findIndex(ad => ad.id === adId);
+            if (position === -1) return null;
+            return {
+              requestId: responseData.data.requestId,
+              slotId,
+              position,
+              totalAds: slotInfo.count
+            };
+          }
+        };
+
+        if (this.config.debug) {
+          console.log('[AdController] SDK analytics data set globally:', {
+            requestId: responseData.data.requestId,
+            slots: Object.keys(slotsMap),
+            hasGetAdAnalytics: typeof (window as any).__AD_ANALYTICS__.getAdAnalytics === 'function'
+          });
+        }
+      }
+
       return {
         ads: allAds,
         slots: slots,  // 保留原始 slots 数据
@@ -1203,6 +1261,17 @@ export class AdController {
             backendFields: adapted.fields,
             finalFields: content.lead_gen_fields,
           });
+        }
+        break;
+
+      case 'entity_link':
+      case 'entityLink':
+        // SDK 的 EntityLinkAd 需要 entity_link_content 字段
+        content.title = adapted.title || 'Content Enhancement';
+        content.body = adapted.body || '';
+        // 将驼峰命名转换为下划线命名，以匹配 SDK 期望的格式
+        if (adapted.entityLinkContent) {
+          content.entity_link_content = adapted.entityLinkContent;
         }
         break;
 

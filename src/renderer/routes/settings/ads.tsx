@@ -457,24 +457,17 @@ function FormatConfigSection({ config, onChange }: FormatConfigSectionProps) {
           <Accordion.Control>
             <Group justify="space-between" w="100%">
               <Group gap="sm">
-                <Switch
-                  size="sm"
-                  checked={config.formats.actionCard.enabled}
-                  onChange={(e) => {
-                    e.stopPropagation()
-                    onChange({
-                      formats: {
-                        ...config.formats,
-                        actionCard: { ...config.formats.actionCard, enabled: e.currentTarget.checked }
-                      }
-                    })
-                  }}
-                />
-                <Text fw={500}>🃏 Action Card (卡片广告)</Text>
+                <Tooltip label="该广告格式当前不可用">
+                  <Switch
+                    size="sm"
+                    checked={false}
+                    disabled
+                    styles={{ track: { opacity: 0.5 } }}
+                  />
+                </Tooltip>
+                <Text fw={500} c="dimmed">🃏 Action Card (卡片广告)</Text>
               </Group>
-              {config.formats.actionCard.enabled && (
-                <Badge size="xs" color="green">已启用</Badge>
-              )}
+              <Badge size="xs" color="gray">不可用</Badge>
             </Group>
           </Accordion.Control>
           <Accordion.Panel>
@@ -492,24 +485,17 @@ function FormatConfigSection({ config, onChange }: FormatConfigSectionProps) {
           <Accordion.Control>
             <Group justify="space-between" w="100%">
               <Group gap="sm">
-                <Switch
-                  size="sm"
-                  checked={config.formats.suffix.enabled}
-                  onChange={(e) => {
-                    e.stopPropagation()
-                    onChange({
-                      formats: {
-                        ...config.formats,
-                        suffix: { ...config.formats.suffix, enabled: e.currentTarget.checked }
-                      }
-                    })
-                  }}
-                />
-                <Text fw={500}>📝 Suffix (后缀广告)</Text>
+                <Tooltip label="该广告格式当前不可用">
+                  <Switch
+                    size="sm"
+                    checked={false}
+                    disabled
+                    styles={{ track: { opacity: 0.5 } }}
+                  />
+                </Tooltip>
+                <Text fw={500} c="dimmed">📝 Suffix (后缀广告)</Text>
               </Group>
-              {config.formats.suffix.enabled && (
-                <Badge size="xs" color="green">已启用</Badge>
-              )}
+              <Badge size="xs" color="gray">不可用</Badge>
             </Group>
           </Accordion.Control>
           <Accordion.Panel>
@@ -527,24 +513,17 @@ function FormatConfigSection({ config, onChange }: FormatConfigSectionProps) {
           <Accordion.Control>
             <Group justify="space-between" w="100%">
               <Group gap="sm">
-                <Switch
-                  size="sm"
-                  checked={config.formats.followup.enabled}
-                  onChange={(e) => {
-                    e.stopPropagation()
-                    onChange({
-                      formats: {
-                        ...config.formats,
-                        followup: { ...config.formats.followup, enabled: e.currentTarget.checked }
-                      }
-                    })
-                  }}
-                />
-                <Text fw={500}>💬 Follow Up (跟进问题)</Text>
+                <Tooltip label="该广告格式当前不可用">
+                  <Switch
+                    size="sm"
+                    checked={false}
+                    disabled
+                    styles={{ track: { opacity: 0.5 } }}
+                  />
+                </Tooltip>
+                <Text fw={500} c="dimmed">💬 Follow Up (跟进问题)</Text>
               </Group>
-              {config.formats.followup.enabled && (
-                <Badge size="xs" color="green">已启用</Badge>
-              )}
+              <Badge size="xs" color="gray">不可用</Badge>
             </Group>
           </Accordion.Control>
           <Accordion.Panel>
@@ -562,24 +541,17 @@ function FormatConfigSection({ config, onChange }: FormatConfigSectionProps) {
           <Accordion.Control>
             <Group justify="space-between" w="100%">
               <Group gap="sm">
-                <Switch
-                  size="sm"
-                  checked={config.formats.source.enabled}
-                  onChange={(e) => {
-                    e.stopPropagation()
-                    onChange({
-                      formats: {
-                        ...config.formats,
-                        source: { ...config.formats.source, enabled: e.currentTarget.checked }
-                      }
-                    })
-                  }}
-                />
-                <Text fw={500}>🔗 Sponsored Source (赞助来源)</Text>
+                <Tooltip label="该广告格式当前不可用">
+                  <Switch
+                    size="sm"
+                    checked={false}
+                    disabled
+                    styles={{ track: { opacity: 0.5 } }}
+                  />
+                </Tooltip>
+                <Text fw={500} c="dimmed">🔗 Sponsored Source (赞助来源)</Text>
               </Group>
-              {config.formats.source.enabled && (
-                <Badge size="xs" color="green">已启用</Badge>
-              )}
+              <Badge size="xs" color="gray">不可用</Badge>
             </Group>
           </Accordion.Control>
           <Accordion.Panel>
@@ -597,24 +569,17 @@ function FormatConfigSection({ config, onChange }: FormatConfigSectionProps) {
           <Accordion.Control>
             <Group justify="space-between" w="100%">
               <Group gap="sm">
-                <Switch
-                  size="sm"
-                  checked={config.formats.static.enabled}
-                  onChange={(e) => {
-                    e.stopPropagation()
-                    onChange({
-                      formats: {
-                        ...config.formats,
-                        static: { ...config.formats.static, enabled: e.currentTarget.checked }
-                      }
-                    })
-                  }}
-                />
-                <Text fw={500}>🖼️ Static (静态横幅)</Text>
+                <Tooltip label="该广告格式当前不可用">
+                  <Switch
+                    size="sm"
+                    checked={false}
+                    disabled
+                    styles={{ track: { opacity: 0.5 } }}
+                  />
+                </Tooltip>
+                <Text fw={500} c="dimmed">🖼️ Static (静态横幅)</Text>
               </Group>
-              {config.formats.static.enabled && (
-                <Badge size="xs" color="green">已启用</Badge>
-              )}
+              <Badge size="xs" color="gray">不可用</Badge>
             </Group>
           </Accordion.Control>
           <Accordion.Panel>
@@ -632,24 +597,17 @@ function FormatConfigSection({ config, onChange }: FormatConfigSectionProps) {
           <Accordion.Control>
             <Group justify="space-between" w="100%">
               <Group gap="sm">
-                <Switch
-                  size="sm"
-                  checked={config.formats.leadGen.enabled}
-                  onChange={(e) => {
-                    e.stopPropagation()
-                    onChange({
-                      formats: {
-                        ...config.formats,
-                        leadGen: { ...config.formats.leadGen, enabled: e.currentTarget.checked }
-                      }
-                    })
-                  }}
-                />
-                <Text fw={500}>📋 Lead Gen (线索收集)</Text>
+                <Tooltip label="该广告格式当前不可用">
+                  <Switch
+                    size="sm"
+                    checked={false}
+                    disabled
+                    styles={{ track: { opacity: 0.5 } }}
+                  />
+                </Tooltip>
+                <Text fw={500} c="dimmed">📋 Lead Gen (线索收集)</Text>
               </Group>
-              {config.formats.leadGen.enabled && (
-                <Badge size="xs" color="green">已启用</Badge>
-              )}
+              <Badge size="xs" color="gray">不可用</Badge>
             </Group>
           </Accordion.Control>
           <Accordion.Panel>
